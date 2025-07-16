@@ -35,6 +35,7 @@ pub mod misc;
 pub mod modulus_switch;
 pub mod modulus_switch_noise_reduction;
 pub mod polynomial_algorithms;
+pub mod polynomial_for_ntru;
 pub mod seeded_ggsw_ciphertext_decompression;
 pub mod seeded_ggsw_ciphertext_list_decompression;
 pub mod seeded_glwe_ciphertext_decompression;

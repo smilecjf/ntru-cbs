@@ -233,6 +233,22 @@ path = "examples/hpu/bench.rs"
 required-features = ["hpu"]
 # End of Hpu related section
 
+# NTRU tests and examples
+[[test]]
+name = "scalar_div_mod_power_of_two"
+path = "tests/ntru/scalar_div_mod_power_of_two.rs"
+harness = false
+
+[[test]]
+name = "polynomial_division"
+path = "tests/ntru/polynomial_division.rs"
+harness = false
+
+[[test]]
+name = "polynomial_gcd"
+path = "tests/ntru/polynomial_gcd.rs"
+harness = false
+
 [lib]
 crate-type = ["lib", "staticlib", "cdylib"]
 
