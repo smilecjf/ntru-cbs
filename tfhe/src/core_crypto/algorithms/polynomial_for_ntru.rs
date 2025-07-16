@@ -255,7 +255,11 @@ pub fn polynomial_div_mod_power_of_two<Scalar, OutputCont, InputCont>(
     return remainder_degree < rhs_degree;
 }
 
-pub fn egcd_polynomial_mod_power_of_two<Scalar, Cont>(lhs: &Polynomial<Cont>, rhs: &Polynomial<Cont>, power: usize) -> (Polynomial<Vec<Scalar>>, Polynomial<Vec<Scalar>>, Polynomial<Vec<Scalar>>, bool)
+pub fn egcd_polynomial_mod_power_of_two<Scalar, Cont>(
+    lhs: &Polynomial<Cont>,
+    rhs: &Polynomial<Cont>,
+    power: usize,
+) -> (Polynomial<Vec<Scalar>>, Polynomial<Vec<Scalar>>, Polynomial<Vec<Scalar>>, bool)
 where
     Scalar: UnsignedInteger + CastInto<i128> + CastFrom<i128>,
     Cont: Container<Element = Scalar>,
@@ -324,4 +328,94 @@ where
     }
 
     return (a, prev_x, prev_y, is_divided);
+}
+
+fn polynomial_swap<Scalar, LhsCont, RhsCont>(lhs: &mut Polynomial<LhsCont>, rhs: &mut Polynomial<RhsCont>)
+where
+    Scalar: UnsignedInteger,
+    LhsCont: ContainerMut<Element = Scalar>,
+    RhsCont: ContainerMut<Element = Scalar>,
+{
+    assert!(
+        lhs.polynomial_size().0 == rhs.polynomial_size().0,
+        "The lhs polynomial size {:?} is different from the rhs polynomial size {:?}",
+        lhs.polynomial_size().0,
+        rhs.polynomial_size().0,
+    );
+
+    let polynomial_size = lhs.polynomial_size();
+    let mut buf = Polynomial::new(Scalar::ZERO, polynomial_size);
+
+    buf.as_mut().clone_from_slice(rhs.as_ref());
+    rhs.as_mut().clone_from_slice(lhs.as_ref());
+    lhs.as_mut().clone_from_slice(buf.as_ref());
+}
+
+pub fn almost_inverse_mod_two<Scalar, InputCont, OutputCont>(
+    input: &Polynomial<InputCont>,
+    output: &mut Polynomial<OutputCont>,
+) -> bool
+where
+    Scalar: UnsignedInteger,
+    InputCont: Container<Element = Scalar>,
+    OutputCont: ContainerMut<Element = Scalar>,
+{
+    assert!(
+        input.polynomial_size().0 == output.polynomial_size().0,
+        "The input polynomial size {:?} is different from the output polynomial size {:?}",
+        input.polynomial_size().0,
+        output.polynomial_size().0,
+    );
+
+    let polynomial_size = input.polynomial_size().0;
+    let inc_polynomial_size = PolynomialSize(polynomial_size + 1);
+
+    let mut a = Polynomial::new(Scalar::ZERO, inc_polynomial_size);
+    let mut b = Polynomial::new(Scalar::ZERO, inc_polynomial_size);
+    let mut c = Polynomial::new(Scalar::ZERO, inc_polynomial_size);
+    let mut g = Polynomial::new(Scalar::ZERO, inc_polynomial_size);
+    let mut k = 0usize;
+
+    // Initialize
+    // a <- input, b <- 1, c <- 0, g <- X^N + 1
+    for i in 0..polynomial_size {
+        a.as_mut()[i] = input.as_ref()[i];
+    }
+    b.as_mut()[0] = Scalar::ONE;
+    g.as_mut()[0] = Scalar::ONE;
+    g.as_mut()[polynomial_size] = Scalar::ONE;
+
+    while !is_polynomial_zero(&a) {
+        while a.as_ref()[0] == Scalar::ZERO {
+            polynomial_wrapping_monic_monomial_div_assign(&mut a, MonomialDegree(1));
+            polynomial_wrapping_monic_monomial_mul_assign(&mut c, MonomialDegree(1));
+            k += 1;
+        }
+        if is_polynomial_one(&a) {
+            for i in 0..polynomial_size {
+                output.as_mut()[i] = b.as_ref()[i];
+            }
+            if k != 0 {
+                polynomial_wrapping_monic_monomial_div_assign_custom_mod(
+                    output,
+                    MonomialDegree(k),
+                    Scalar::TWO,
+                );
+            }
+            return true;
+        }
+
+        let degree_a = polynomial_nonzero_coeff_idx(&a, inc_polynomial_size.0);
+        let degree_g = polynomial_nonzero_coeff_idx(&g, inc_polynomial_size.0);
+
+        if degree_a < degree_g {
+            polynomial_swap(&mut a, &mut g);
+            polynomial_swap(&mut b, &mut c);
+        }
+
+        polynomial_wrapping_add_assign_custom_mod(&mut a, &g, Scalar::TWO);
+        polynomial_wrapping_add_assign_custom_mod(&mut b, &c, Scalar::TWO);
+    }
+
+    return false;
 }

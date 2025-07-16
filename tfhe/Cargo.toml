@@ -249,6 +249,11 @@ name = "polynomial_gcd"
 path = "tests/ntru/polynomial_gcd.rs"
 harness = false
 
+[[test]]
+name = "almost_inverse_mod_two"
+path = "tests/ntru/almost_inverse_mod_two.rs"
+harness = false
+
 [lib]
 crate-type = ["lib", "staticlib", "cdylib"]
 
