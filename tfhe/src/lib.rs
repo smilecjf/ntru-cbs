@@ -97,6 +97,9 @@ pub mod boolean;
 /// cbindgen:ignore
 pub mod core_crypto;
 
+/// NTRU
+pub mod ntru;
+
 #[cfg(feature = "integer")]
 /// Welcome to the TFHE-rs [`integer`](`crate::integer`) module documentation!
 ///

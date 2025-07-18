@@ -1,5 +1,5 @@
 use tfhe::core_crypto::prelude::*;
-use tfhe::core_crypto::algorithms::polynomial_for_ntru::*;
+use tfhe::ntru::algorithms::polynomial_for_ntru::*;
 
 pub fn polynomial_to_string_mod_power_of_two<Scalar, InputCont>(input: &Polynomial<InputCont>, power: usize)
 -> String

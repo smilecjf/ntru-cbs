@@ -1,5 +1,6 @@
 use rand::Rng;
-use tfhe::core_crypto::prelude::{polynomial_for_ntru::{div_mod_power_of_two, egcd}, UnsignedInteger};
+use tfhe::core_crypto::prelude::*;
+use tfhe::ntru::algorithms::polynomial_for_ntru::*;
 
 pub fn gcd_test<Scalar>(a: Scalar, b: Scalar) -> Scalar
 where
