@@ -254,6 +254,11 @@ name = "almost_inverse_mod_two"
 path = "tests/ntru/almost_inverse_mod_two.rs"
 harness = false
 
+[[test]]
+name = "polynomial_inverse_mod_power_of_two"
+path = "tests/ntru/polynomial_inverse_mod_power_of_two.rs"
+harness = false
+
 [lib]
 crate-type = ["lib", "staticlib", "cdylib"]
 

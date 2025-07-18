@@ -133,16 +133,30 @@ where
     return 0;
 }
 
-pub fn polynomial_wrapping_custom_mod_assign<Scalar, Cont>(
-    input: &mut Polynomial<Cont>,
-    modulus: Scalar,
+pub fn polynomial_wrapping_custom_mod_assign<Scalar, OutputCont>(
+    output: &mut Polynomial<OutputCont>,
+    custom_modulus: Scalar,
 ) where
     Scalar: UnsignedInteger,
-    Cont: ContainerMut<Element = Scalar>,
+    OutputCont: ContainerMut<Element = Scalar>,
 {
-    for e in input.as_mut().iter_mut() {
-        *e = (*e) % modulus;
-    }
+    output.iter_mut().for_each(|elt| {
+        *elt = (*elt) % custom_modulus;
+    });
+}
+
+pub fn polynomial_wrapping_custom_mod<Scalar, InputCont, OutputCont>(
+    input: &Polynomial<InputCont>,
+    output: &mut Polynomial<OutputCont>,
+    custom_modulus: Scalar,
+) where
+    Scalar: UnsignedInteger,
+    InputCont: Container<Element = Scalar>,
+    OutputCont: ContainerMut<Element = Scalar>,
+{
+    input.iter().zip(output.iter_mut()).for_each(|(&input, output)| {
+        *output = input % custom_modulus;
+    });
 }
 
 pub fn polynomial_wrapping_mul_scalar_custom_mod<Scalar, InputCont, OutputCont>(
@@ -379,7 +393,7 @@ where
     // Initialize
     // a <- input, b <- 1, c <- 0, g <- X^N + 1
     for i in 0..polynomial_size {
-        a.as_mut()[i] = input.as_ref()[i];
+        a.as_mut()[i] = input.as_ref()[i] % Scalar::TWO;
     }
     b.as_mut()[0] = Scalar::ONE;
     g.as_mut()[0] = Scalar::ONE;
@@ -418,4 +432,57 @@ where
     }
 
     return false;
+}
+
+pub(crate) fn polynomial_wrapping_neg_assign_custom_mod<Scalar, OutputCont>(
+    output: &mut Polynomial<OutputCont>,
+    custom_modulus: Scalar,
+)
+where
+    Scalar: UnsignedInteger,
+    OutputCont: ContainerMut<Element = Scalar>,
+{
+    output.iter_mut().for_each(|elt| {
+        *elt = (*elt).wrapping_neg() % custom_modulus;
+    });
+}
+
+pub fn polynomial_inverse_mod_power_of_two<Scalar, InputCont, OutputCont>(
+    input: &Polynomial<InputCont>,
+    output: &mut Polynomial<OutputCont>,
+    power: usize,
+) -> bool
+where
+    Scalar: UnsignedInteger,
+    InputCont: Container<Element = Scalar>,
+    OutputCont: ContainerMut<Element = Scalar>,
+{
+    assert!(power > 0 && power <= Scalar::BITS);
+
+    let is_invertible = almost_inverse_mod_two(input, output);
+
+    if !is_invertible {
+        return false;
+    }
+
+    let mut buf1 = Polynomial::new(Scalar::ZERO, input.polynomial_size());
+    let mut buf2 = Polynomial::new(Scalar::ZERO, input.polynomial_size());
+
+    for i in 1..power {
+        if i < Scalar::BITS {
+            let cur_mod = Scalar::ONE << (i + 1);
+            polynomial_wrapping_mul(&mut buf1, input, output);
+            buf1.as_mut()[0] = buf1.as_mut()[0].wrapping_sub(Scalar::TWO);
+            polynomial_wrapping_neg_assign_custom_mod(&mut buf1, cur_mod);
+            polynomial_wrapping_mul(&mut buf2, output, &buf1);
+            polynomial_wrapping_custom_mod(&buf2, output, cur_mod);
+        } else {
+            polynomial_wrapping_mul(&mut buf1, input, output);
+            buf1.as_mut()[0] = buf1.as_mut()[0].wrapping_sub(Scalar::TWO);
+            polynomial_wrapping_mul(&mut buf2, output, &buf1);
+            output.as_mut().clone_from_slice(buf2.as_ref());
+        }
+    }
+
+    return true;
 }
