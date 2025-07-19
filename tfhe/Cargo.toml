@@ -259,6 +259,11 @@ name = "polynomial_inverse_mod_power_of_two"
 path = "tests/ntru/polynomial_inverse_mod_power_of_two.rs"
 harness = false
 
+[[test]]
+name = "ntru_secret_keygen"
+path = "tests/ntru/ntru_secret_keygen.rs"
+harness = false
+
 [lib]
 crate-type = ["lib", "staticlib", "cdylib"]
 
