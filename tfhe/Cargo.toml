@@ -265,8 +265,13 @@ path = "tests/ntru/polynomial_inverse_native_mod.rs"
 harness = false
 
 [[test]]
-name = "ntru_secret_keygen"
-path = "tests/ntru/ntru_secret_keygen.rs"
+name = "ntru_secret_keygen_mod_power_of_two"
+path = "tests/ntru/ntru_secret_keygen_mod_power_of_two.rs"
+harness = false
+
+[[test]]
+name = "ntru_secret_keygen_native_mod"
+path = "tests/ntru/ntru_secret_keygen_native_mod.rs"
 harness = false
 
 [lib]
