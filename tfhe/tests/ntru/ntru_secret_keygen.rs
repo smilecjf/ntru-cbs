@@ -10,6 +10,7 @@ type Scalar = u32;
 pub fn main() {
     let power=  16usize;
     let modulus = Scalar::ONE << power;
+    let ciphertext_modulus = CiphertextModulus::try_new_power_of_2(power).unwrap();
     let polynomial_size = PolynomialSize(2048);
 
     let mut seeder = new_seeder();
@@ -21,10 +22,9 @@ pub fn main() {
 
     for idx in 1..=num_test {
         println!("======== Test {idx} ========");
-        let ntru_secret_key = allocate_and_generate_new_binary_ntru_secret_key(polynomial_size, modulus, &mut secret_generator);
+        let ntru_secret_key = allocate_and_generate_new_binary_ntru_secret_key(polynomial_size, ciphertext_modulus, &mut secret_generator);
 
-        let f = Polynomial::from_container(&ntru_secret_key.as_ref()[0..polynomial_size.0]);
-        let f_inv = Polynomial::from_container(&ntru_secret_key.as_ref()[polynomial_size.0..]);
+        let (f, f_inv) = ntru_secret_key.get_secret_key_and_inverse_polynomial();
 
         if polynomial_size.0 <= 16 {
             println!("sk   : {}", polynomial_to_string_mod_power_of_two(&f, power));

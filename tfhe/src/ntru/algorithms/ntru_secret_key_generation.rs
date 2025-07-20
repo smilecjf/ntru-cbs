@@ -8,7 +8,7 @@ use crate::ntru::entities::*;
 
 pub fn allocate_and_generate_new_binary_ntru_secret_key<Scalar, Gen>(
     polynomial_size: PolynomialSize,
-    modulus: Scalar,
+    ciphertext_modulus: CiphertextModulus<Scalar>,
     generator: &mut SecretRandomGenerator<Gen>,
 ) -> NtruSecretKeyOwned<Scalar>
 where
@@ -16,16 +16,16 @@ where
     Gen: ByteRandomGenerator,
 {
     let mut ntru_secret_key =
-        NtruSecretKeyOwned::new_empty_key(Scalar::ZERO, polynomial_size, modulus);
+        NtruSecretKeyOwned::new_empty_key(Scalar::ZERO, polynomial_size, ciphertext_modulus);
 
-    generate_binary_ntru_secret_key(&mut ntru_secret_key, modulus, generator);
+    generate_binary_ntru_secret_key(&mut ntru_secret_key, ciphertext_modulus, generator);
 
     ntru_secret_key
 }
 
 pub fn generate_binary_ntru_secret_key<Scalar, KeyCont, Gen>(
     ntru_secret_key: &mut NtruSecretKey<KeyCont>,
-    modulus: Scalar,
+    ciphertext_modulus: CiphertextModulus<Scalar>,
     generator: &mut SecretRandomGenerator<Gen>,
 ) where
     Scalar: UnsignedInteger + RandomGenerable<UniformBinary>,
@@ -34,10 +34,10 @@ pub fn generate_binary_ntru_secret_key<Scalar, KeyCont, Gen>(
 {
     // Currently only suuports power-of-two modulus
     assert!(
-        modulus.is_power_of_two(),
+        ciphertext_modulus.is_compatible_with_native_modulus(),
         "Only supports power-of-two modulus currently"
     );
-    let power = modulus.ilog2() as usize;
+    let power = ciphertext_modulus.into_modulus_log().0;
 
     let polynomial_size = ntru_secret_key.polynomial_size();
     let mut is_invertible = false;

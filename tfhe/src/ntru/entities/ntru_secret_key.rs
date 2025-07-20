@@ -5,30 +5,34 @@ use crate::core_crypto::commons::generators::SecretRandomGenerator;
 use crate::core_crypto::commons::math::random::{RandomGenerable, UniformBinary};
 use crate::core_crypto::commons::traits::*;
 use crate::core_crypto::commons::parameters::*;
+use crate::core_crypto::entities::*;
 
 // First half of data contains the secret key polynomial f, and
 // the other half contains the inverse 1/f of the secret key polynomimal
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct NtruSecretKey<C: Container> {
+pub struct NtruSecretKey<C: Container>
+where
+    C::Element: UnsignedInteger,
+{
     data: C,
     polynomial_size: PolynomialSize,
-    modulus: C::Element,
+    ciphertext_modulus: CiphertextModulus<C::Element>,
 }
 
-impl<T, C: Container<Element = T>> AsRef<[T]> for NtruSecretKey<C> {
+impl<T: UnsignedInteger, C: Container<Element = T>> AsRef<[T]> for NtruSecretKey<C> {
     fn as_ref(&self) -> &[T] {
         self.data.as_ref()
     }
 }
 
-impl<T, C: ContainerMut<Element = T>> AsMut<[T]> for NtruSecretKey<C> {
+impl<T: UnsignedInteger, C: ContainerMut<Element = T>> AsMut<[T]> for NtruSecretKey<C> {
     fn as_mut(&mut self) -> &mut [T] {
         self.data.as_mut()
     }
 }
 
-impl<Scalar: Copy, C: Container<Element = Scalar>> NtruSecretKey<C> {
-    pub fn from_container(container: C, polynomial_size: PolynomialSize, modulus: C::Element) -> Self {
+impl<Scalar: UnsignedInteger, C: Container<Element = Scalar>> NtruSecretKey<C> {
+    pub fn from_container(container: C, polynomial_size: PolynomialSize, ciphertext_modulus: CiphertextModulus<Scalar>) -> Self {
         assert!(
             container.container_len() > 0,
             "Got an empty container to create a NtruSecretKey"
@@ -42,7 +46,7 @@ impl<Scalar: Copy, C: Container<Element = Scalar>> NtruSecretKey<C> {
         Self {
             data: container,
             polynomial_size,
-            modulus,
+            ciphertext_modulus,
         }
     }
 
@@ -50,24 +54,44 @@ impl<Scalar: Copy, C: Container<Element = Scalar>> NtruSecretKey<C> {
         self.polynomial_size
     }
 
-    pub fn modulus(&self) -> Scalar {
-        self.modulus
+    pub fn ciphertext_modulus(&self) -> CiphertextModulus<C::Element> {
+        self.ciphertext_modulus
     }
 
     pub fn as_view(&self) -> NtruSecretKeyView<'_, Scalar> {
-        NtruSecretKey::from_container(self.as_ref(), self.polynomial_size, self.modulus)
+        NtruSecretKey::from_container(self.as_ref(), self.polynomial_size, self.ciphertext_modulus)
     }
 
     pub fn into_container(self) -> C {
         self.data
     }
+
+    pub fn get_secret_key_polynomial(&self) -> Polynomial<&[C::Element]> {
+        Polynomial::from_container(&self.as_ref()[..self.polynomial_size.0])
+    }
+
+    pub fn get_secret_key_inverse_polynomial(&self) -> Polynomial<&[C::Element]> {
+        Polynomial::from_container(&self.as_ref()[self.polynomial_size.0..])
+    }
+
+    pub fn get_secret_key_and_inverse_polynomial(&self)
+    -> (Polynomial<&[C::Element]>, Polynomial<&[C::Element]>)
+    {
+        let (sk_poly, sk_inv_poly) = self.as_ref().split_at(self.polynomial_size.0);
+
+        (
+            Polynomial::from_container(sk_poly),
+            Polynomial::from_container(sk_inv_poly),
+        )
+    }
+
 }
 
 impl<Scalar: UnsignedInteger, C: ContainerMut<Element = Scalar>> NtruSecretKey<C> {
     pub fn as_mut_view(&mut self) -> NtruSecretKeyMutView<'_, Scalar> {
         let polynomial_size = self.polynomial_size;
-        let modulus = self.modulus;
-        NtruSecretKey::from_container(self.as_mut(), polynomial_size, modulus)
+        let ciphertext_modulus = self.ciphertext_modulus;
+        NtruSecretKey::from_container(self.as_mut(), polynomial_size, ciphertext_modulus)
     }
 }
 
@@ -75,14 +99,14 @@ pub type NtruSecretKeyOwned<Scalar> = NtruSecretKey<Vec<Scalar>>;
 pub type NtruSecretKeyView<'data, Scalar> = NtruSecretKey<&'data [Scalar]>;
 pub type NtruSecretKeyMutView<'data, Scalar> = NtruSecretKey<&'data mut [Scalar]>;
 
-impl<Scalar> NtruSecretKeyOwned<Scalar>
+impl<Scalar: UnsignedInteger> NtruSecretKeyOwned<Scalar>
 where
     Scalar: Copy,
 {
     pub fn new_empty_key(
         value: Scalar,
         polynomial_size: PolynomialSize,
-        modulus: Scalar,
+        ciphertext_modulus: CiphertextModulus<Scalar>,
     ) -> Self {
         Self::from_container(
             vec![
@@ -90,21 +114,21 @@ where
                 2 * polynomial_size.0
             ],
             polynomial_size,
-            modulus,
+            ciphertext_modulus,
         )
     }
 
     pub fn generate_new_binary<Gen>(
         polynomial_size: PolynomialSize,
-        modulus: Scalar,
+        ciphertext_modulus: CiphertextModulus<Scalar>,
         generator: &mut SecretRandomGenerator<Gen>,
     ) -> Self
     where
         Scalar: UnsignedInteger + RandomGenerable<UniformBinary>,
         Gen: ByteRandomGenerator,
     {
-        let mut ntru_sk = Self::new_empty_key(Scalar::ZERO, polynomial_size, modulus);
-        generate_binary_ntru_secret_key(&mut ntru_sk, modulus, generator);
+        let mut ntru_sk = Self::new_empty_key(Scalar::ZERO, polynomial_size, ciphertext_modulus);
+        generate_binary_ntru_secret_key(&mut ntru_sk, ciphertext_modulus, generator);
         ntru_sk
     }
 }
