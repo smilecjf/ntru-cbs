@@ -2,8 +2,8 @@ use rand::Rng;
 use tfhe::core_crypto::prelude::*;
 use tfhe::core_crypto::algorithms::polynomial_algorithms::*;
 use tfhe::ntru::algorithms::polynomial_for_ntru::*;
-mod util;
-use util::polynomial_to_string_mod_power_of_two;
+mod utils;
+use utils::polynomial_to_string_mod_power_of_two;
 
 pub fn main() {
     type Scalar = u64;

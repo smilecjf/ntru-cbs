@@ -2,8 +2,8 @@ use tfhe::core_crypto::prelude::*;
 use tfhe::core_crypto::prelude::polynomial_algorithms::*;
 use tfhe::ntru::algorithms::*;
 
-mod util;
-use util::polynomial_to_string_mod_power_of_two;
+mod utils;
+use utils::polynomial_to_string_mod_power_of_two;
 
 type Scalar = u32;
 
