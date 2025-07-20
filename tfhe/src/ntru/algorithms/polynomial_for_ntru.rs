@@ -434,11 +434,21 @@ where
     return false;
 }
 
+pub(crate) fn polynomial_wrapping_neg_assign<Scalar, OutputCont>(
+    output: &mut Polynomial<OutputCont>,
+) where
+    Scalar: UnsignedInteger,
+    OutputCont: ContainerMut<Element = Scalar>,
+{
+    output.iter_mut().for_each(|elt| {
+        *elt = (*elt).wrapping_neg();
+    });
+}
+
 pub(crate) fn polynomial_wrapping_neg_assign_custom_mod<Scalar, OutputCont>(
     output: &mut Polynomial<OutputCont>,
     custom_modulus: Scalar,
-)
-where
+) where
     Scalar: UnsignedInteger,
     OutputCont: ContainerMut<Element = Scalar>,
 {
@@ -469,7 +479,7 @@ where
     let mut buf2 = Polynomial::new(Scalar::ZERO, input.polynomial_size());
 
     for i in 1..power {
-        if i < Scalar::BITS {
+        if i < Scalar::BITS - 1 {
             let cur_mod = Scalar::ONE << (i + 1);
             polynomial_wrapping_mul(&mut buf1, input, output);
             buf1.as_mut()[0] = buf1.as_mut()[0].wrapping_sub(Scalar::TWO);
@@ -479,6 +489,7 @@ where
         } else {
             polynomial_wrapping_mul(&mut buf1, input, output);
             buf1.as_mut()[0] = buf1.as_mut()[0].wrapping_sub(Scalar::TWO);
+            polynomial_wrapping_neg_assign(&mut buf1);
             polynomial_wrapping_mul(&mut buf2, output, &buf1);
             output.as_mut().clone_from_slice(buf2.as_ref());
         }
