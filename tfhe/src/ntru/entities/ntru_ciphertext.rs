@@ -50,11 +50,27 @@ impl<Scalar: UnsignedInteger, C: Container<Element = Scalar>> NtruCiphertext<C> 
     pub fn as_polynomial(&self) -> PolynomialView<'_, C::Element> {
         PolynomialView::from_container(self.as_ref())
     }
+
+    pub fn as_view(&self) -> NtruCiphertext<&'_ [Scalar]> {
+        NtruCiphertext {
+            data: self.data.as_ref(),
+            polynomial_size: self.polynomial_size,
+            ciphertext_modulus: self.ciphertext_modulus,
+        }
+    }
 }
 
 impl<Scalar: UnsignedInteger, C: ContainerMut<Element = Scalar>> NtruCiphertext<C> {
     pub fn as_mut_polynomial(&mut self) -> PolynomialMutView<'_, C::Element> {
         PolynomialMutView::from_container(self.as_mut())
+    }
+
+    pub fn as_mut_view(&mut self) -> NtruCiphertext<&'_ mut [Scalar]> {
+        NtruCiphertext {
+            data: self.data.as_mut(),
+            polynomial_size: self.polynomial_size,
+            ciphertext_modulus: self.ciphertext_modulus,
+        }
     }
 }
 
@@ -85,5 +101,24 @@ impl<Scalar: UnsignedInteger> NtruCiphertextOwned<Scalar> {
             polynomial_size,
             ciphertext_modulus,
         )
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct NtruCiphertextCreationMetadata<Scalar: UnsignedInteger> {
+    pub polynomial_size: PolynomialSize,
+    pub ciphertext_modulus: CiphertextModulus<Scalar>,
+}
+
+impl<Scalar: UnsignedInteger, C: Container<Element = Scalar>> CreateFrom<C> for NtruCiphertext<C> {
+    type Metadata = NtruCiphertextCreationMetadata<Scalar>;
+
+    #[inline]
+    fn create_from(from: C, meta: Self::Metadata) -> Self {
+        let NtruCiphertextCreationMetadata {
+            polynomial_size,
+            ciphertext_modulus,
+        } = meta;
+        Self::from_container(from, polynomial_size, ciphertext_modulus)
     }
 }
