@@ -294,6 +294,16 @@ name = "ngsw_encryption_native_mod"
 path = "tests/ntru/ngsw_encryption_native_mod.rs"
 harness = false
 
+[[test]]
+name = "ngsw_external_product_native_mod"
+path = "tests/ntru/ngsw_external_product_native_mod.rs"
+harness = false
+
+[[test]]
+name = "ngsw_external_product_mod_power_of_two"
+path = "tests/ntru/ngsw_external_product_mod_power_of_two.rs"
+harness = false
+
 [lib]
 crate-type = ["lib", "staticlib", "cdylib"]
 

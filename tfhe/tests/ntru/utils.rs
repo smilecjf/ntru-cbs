@@ -24,8 +24,10 @@ pub fn get_max_error<Scalar, PtxtCont, MsgCont>(
     let mut max_err = Scalar::ZERO;
     input_plaintext_list.iter().zip(correct_message_list.iter())
         .for_each(|(input, correct_val)| {
-            let input = *(input.0) * torus_scaling;
-            let correct_val = *(correct_val.0) * delta * torus_scaling;
+            let input = (*input.0).wrapping_mul(torus_scaling);
+            let correct_val = (*correct_val.0)
+                .wrapping_mul(delta)
+                .wrapping_mul(torus_scaling);
 
             let abs_err = {
                 let d0 = input.wrapping_sub(correct_val);
