@@ -1,4 +1,5 @@
 use rand::Rng;
+use tfhe::core_crypto::commons::math::decomposition::DecompositionLevel;
 use tfhe::core_crypto::prelude::*;
 use tfhe::ntru::algorithms::*;
 use tfhe::ntru::entities::*;
@@ -23,6 +24,9 @@ pub fn main() {
 
     let mut ngsw_ciphertext = NgswCiphertext::new(Scalar::ZERO, polynomial_size, decomp_base_log, decomp_level_count, ciphertext_modulus);
 
+    let torus_scaling = ciphertext_modulus.get_power_of_two_scaling_to_native_torus();
+    let mut err_list = PlaintextList::new(Scalar::ZERO, PlaintextCount(polynomial_size.0));
+
     let num_test = 10;
     for i in 0..num_test {
         let a = rand::thread_rng().gen_range(0..Scalar::ONE << decomp_base_log.0);
@@ -39,7 +43,28 @@ pub fn main() {
             &ntru_secret_key,
             &ngsw_ciphertext,
         );
-        println!("[{i}] input: {}, decrypted: {}", a.into_signed(), decrypted.0);
+
+        let mut first_row = NtruCiphertext::new(Scalar::ZERO, polynomial_size, ciphertext_modulus);
+        first_row.as_mut().clone_from_slice(ngsw_ciphertext.first().unwrap().as_ref());
+
+        let factor = ngsw_encryption_multiplicative_factor(
+            ciphertext_modulus,
+            DecompositionLevel(decomp_level_count.0),
+            decomp_base_log,
+            Cleartext(a),
+        ).wrapping_mul(torus_scaling);
+        first_row.as_mut()[0] = first_row.as_mut()[0].wrapping_sub(factor);
+
+        decrypt_ntru_ciphertext(&ntru_secret_key, &first_row, &mut err_list);
+        let mut max_err = Scalar::ZERO;
+        for err in err_list.iter() {
+            let err = (*err.0).wrapping_mul(torus_scaling);
+            let err = std::cmp::min(err, err.wrapping_neg())
+                .wrapping_div(torus_scaling);
+            max_err = std::cmp::max(max_err, err);
+        }
+
+        println!("[{i}] input: {}, decrypted: {}, err: {:.3} bits", a.into_signed(), decrypted.0, (max_err as f64).log2());
 
         if a != decrypted.0 {
             println!("Invalid result");
