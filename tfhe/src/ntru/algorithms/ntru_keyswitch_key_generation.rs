@@ -67,6 +67,7 @@ pub fn generate_ntru_keyswitch_key<
 
     // NGSW_f2(f1/f2) = {NTRU_f2(q/B^j * f1)}_{j=1}^{l}
     for (level, mut ksk_ntru_ciphertext) in (1..=decomp_level_count.0)
+        .rev()
         .map(DecompositionLevel)
         .zip(ntru_keyswitch_key.as_mut_ntru_ciphertext_list().iter_mut())
     {

@@ -137,7 +137,7 @@ impl<'a> FourierNgswCiphertextView<'a> {
                 FourierNgswLevelPolyView::new(
                     slice,
                     self.fourier.polynomial_size,
-                    DecompositionLevel(i + 1),
+                    DecompositionLevel(decomposition_level_count - i),
                 )
             })
     }

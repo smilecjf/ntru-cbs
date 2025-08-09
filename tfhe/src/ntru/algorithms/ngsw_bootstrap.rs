@@ -70,7 +70,7 @@ pub fn add_ntru_external_product_assign<Scalar>(
             substack0,
         );
 
-        ngsw.into_levels().rev().for_each(|ngsw_decomp_poly| {
+        ngsw.into_levels().for_each(|ngsw_decomp_poly| {
             let (ntru_level, ntru_decomp_poly, substack2)
                 = collect_next_term(&mut decomposition, substack1, CACHELINE_ALIGN);
             let ntru_decomp_poly = NtruCiphertextView::from_container(

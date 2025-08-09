@@ -76,11 +76,14 @@ pub fn encrypt_constant_ngsw_ciphertext<Scalar, NoiseDistribution, KeyCont, Outp
     let sk_inv_poly = ntru_secret_key.get_secret_key_inverse_polynomial();
     let mut buf = Polynomial::new(Scalar::ZERO, polynomial_size);
 
-    for (output_index, mut ntru_ciphertext) in output.iter_mut().rev().enumerate() {
-        let decomp_level = DecompositionLevel(decomp_level_count.0 - output_index);
+    for (level, mut ntru_ciphertext) in (1..=decomp_level_count.0)
+        .rev()
+        .map(DecompositionLevel)
+        .zip(output.iter_mut())
+    {
         let factor = ngsw_encryption_multiplicative_factor(
             ciphertext_modulus,
-            decomp_level,
+            level,
             decomp_base_log,
             cleartext,
         );
@@ -143,7 +146,7 @@ where
         "Only support power-of-two modulus currently.",
     );
 
-    let last_row = ngsw_ciphertext.last().unwrap();
+    let first_row = ngsw_ciphertext.first().unwrap();
     let decomp_level = ngsw_ciphertext.decomposition_level_count();
     let decomp_base_log = ngsw_ciphertext.decomposition_base_log();
 
@@ -152,7 +155,7 @@ where
         PlaintextCount(polynomial_size.0),
     );
 
-    decrypt_ntru_ciphertext(ntru_secret_key, &last_row, &mut decrypted_plaintext_list);
+    decrypt_ntru_ciphertext(ntru_secret_key, &first_row, &mut decrypted_plaintext_list);
 
     match ciphertext_modulus.kind() {
         CiphertextModulusKind::Native | CiphertextModulusKind::NonNativePowerOfTwo => {
