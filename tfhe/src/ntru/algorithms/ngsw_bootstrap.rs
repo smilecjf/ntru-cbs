@@ -41,6 +41,10 @@ pub fn add_ntru_external_product_assign<Scalar>(
 {
     assert_eq!(ngsw.polynomial_size(), ntru.polynomial_size());
     assert_eq!(ngsw.polynomial_size(), out.polynomial_size());
+    assert!(
+        ngsw.fft_type() == FftType::Vanilla,
+        "Split FFt is not implemented yet",
+    );
 
     let fourier_poly_size = ngsw.polynomial_size().to_fourier_polynomial_size().0;
 

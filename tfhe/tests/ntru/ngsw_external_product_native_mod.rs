@@ -65,6 +65,7 @@ pub fn main() {
         polynomial_size,
         decomp_base_log,
         decomp_level_count,
+        FftType::Vanilla,
     );
 
     let num_test = 10;

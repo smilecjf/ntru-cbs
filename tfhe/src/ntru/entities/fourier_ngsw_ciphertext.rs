@@ -10,8 +10,39 @@ use dyn_stack::PodStack;
 use aligned_vec::{avec, ABox};
 use tfhe_fft::c64;
 
+#[derive(Clone, Debug, Copy, PartialEq, Eq)]
+pub enum FftType {
+    Vanilla,
+    Split(usize),
+}
+
+impl FftType {
+    pub fn num_split(&self) -> usize {
+        match self {
+            FftType::Vanilla => 1,
+            FftType::Split(_) => 2,
+        }
+    }
+
+    pub fn split_base_log(&self) -> usize {
+        match self {
+            FftType::Vanilla => 0,
+            FftType::Split(b) => *b,
+        }
+    }
+}
+
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FourierNgswCiphertext<C: Container<Element = c64>> {
+    fourier: FourierPolynomialList<C>,
+    decomposition_base_log: DecompositionBaseLog,
+    decomposition_level_count: DecompositionLevelCount,
+    fft_type: FftType,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FourierNgswSplitBlock<C: Container<Element = c64>> {
     fourier: FourierPolynomialList<C>,
     decomposition_base_log: DecompositionBaseLog,
     decomposition_level_count: DecompositionLevelCount,
@@ -26,10 +57,89 @@ pub struct FourierNgswLevelPoly<C: Container<Element = c64>> {
 
 pub type FourierNgswCiphertextView<'a> = FourierNgswCiphertext<&'a [c64]>;
 pub type FourierNgswCiphertextMutView<'a> = FourierNgswCiphertext<&'a mut [c64]>;
+pub type FourierNgswSplitBlockView<'a> = FourierNgswSplitBlock<&'a [c64]>;
+pub type FourierNgswSplitBlockMutView<'a> = FourierNgswSplitBlock<&'a mut [c64]>;
 pub type FourierNgswLevelPolyView<'a> = FourierNgswLevelPoly<&'a [c64]>;
 pub type FourierNgswLevelPolyMutView<'a> = FourierNgswLevelPoly<&'a mut [c64]>;
 
 impl<C: Container<Element = c64>> FourierNgswCiphertext<C> {
+    pub fn from_container(
+        data: C,
+        polynomial_size: PolynomialSize,
+        decomposition_base_log: DecompositionBaseLog,
+        decomposition_level_count: DecompositionLevelCount,
+        fft_type: FftType,
+    ) -> Self {
+        assert_eq!(
+            data.container_len(),
+            polynomial_size.to_fourier_polynomial_size().0
+                * decomposition_level_count.0
+                * fft_type.num_split()
+        );
+
+        Self {
+            fourier: FourierPolynomialList {
+                data,
+                polynomial_size,
+            },
+            decomposition_base_log,
+            decomposition_level_count,
+            fft_type,
+        }
+    }
+
+    pub fn polynomial_size(&self) -> PolynomialSize {
+        self.fourier.polynomial_size
+    }
+
+    pub fn decomposition_base_log(&self) -> DecompositionBaseLog {
+        self.decomposition_base_log
+    }
+
+    pub fn decomposition_level_count(&self) -> DecompositionLevelCount {
+        self.decomposition_level_count
+    }
+
+    pub fn fft_type(&self) -> FftType {
+        self.fft_type
+    }
+
+    pub fn data(self) -> C {
+        self.fourier.data
+    }
+
+    pub fn as_view(&self) -> FourierNgswCiphertextView<'_>
+    where
+        C: AsRef<[c64]>,
+    {
+        FourierNgswCiphertextView {
+            fourier: FourierPolynomialList {
+                data: self.fourier.data.as_ref(),
+                polynomial_size: self.fourier.polynomial_size,
+            },
+            decomposition_base_log: self.decomposition_base_log,
+            decomposition_level_count: self.decomposition_level_count,
+            fft_type: self.fft_type,
+        }
+    }
+
+    pub fn as_mut_view(&mut self) -> FourierNgswCiphertextMutView<'_>
+    where
+        C: AsMut<[c64]>,
+    {
+        FourierNgswCiphertextMutView {
+            fourier: FourierPolynomialList {
+                data: self.fourier.data.as_mut(),
+                polynomial_size: self.fourier.polynomial_size,
+            },
+            decomposition_base_log: self.decomposition_base_log,
+            decomposition_level_count: self.decomposition_level_count,
+            fft_type: self.fft_type,
+        }
+    }
+}
+
+impl<C: Container<Element = c64>> FourierNgswSplitBlock<C> {
     pub fn from_container(
         data: C,
         polynomial_size: PolynomialSize,
@@ -68,11 +178,11 @@ impl<C: Container<Element = c64>> FourierNgswCiphertext<C> {
         self.fourier.data
     }
 
-    pub fn as_view(&self) -> FourierNgswCiphertextView<'_>
+    pub fn as_view(&self) -> FourierNgswSplitBlockView<'_>
     where
         C: AsRef<[c64]>,
     {
-        FourierNgswCiphertextView {
+        FourierNgswSplitBlockView {
             fourier: FourierPolynomialList {
                 data: self.fourier.data.as_ref(),
                 polynomial_size: self.fourier.polynomial_size,
@@ -82,11 +192,11 @@ impl<C: Container<Element = c64>> FourierNgswCiphertext<C> {
         }
     }
 
-    pub fn as_mut_view(&mut self) -> FourierNgswCiphertextMutView<'_>
+    pub fn as_mut_view(&mut self) -> FourierNgswSplitBlockMutView<'_>
     where
         C: AsMut<[c64]>,
     {
-        FourierNgswCiphertextMutView {
+        FourierNgswSplitBlockMutView {
             fourier: FourierPolynomialList {
                 data: self.fourier.data.as_mut(),
                 polynomial_size: self.fourier.polynomial_size,
@@ -98,7 +208,7 @@ impl<C: Container<Element = c64>> FourierNgswCiphertext<C> {
 }
 
 impl<C: Container<Element = c64>> FourierNgswLevelPoly<C> {
-    pub fn new(
+    pub fn from_container(
         data: C,
         polynomial_size: PolynomialSize,
         decomposition_level: DecompositionLevel,
@@ -127,6 +237,43 @@ impl<C: Container<Element = c64>> FourierNgswLevelPoly<C> {
 }
 
 impl<'a> FourierNgswCiphertextView<'a> {
+    pub fn into_splits(self) -> impl DoubleEndedIterator<Item = FourierNgswSplitBlockView<'a>> {
+        self.fourier
+            .data
+            .split_into(self.fft_type.num_split())
+            .map(move |slice| {
+                FourierNgswSplitBlockView::from_container(
+                    slice,
+                    self.fourier.polynomial_size,
+                    self.decomposition_base_log,
+                    self.decomposition_level_count,
+                )
+            })
+    }
+
+    pub fn into_levels(self) -> impl DoubleEndedIterator<Item = FourierNgswLevelPolyView<'a>> {
+        // TODO: remove this after finishing split FFT
+        assert!(
+            self.fft_type == FftType::Vanilla,
+            "[FourierNgswCiphertext] into_levels is only supported for non split-FFT"
+        );
+
+        let decomposition_level_count = self.decomposition_level_count.0;
+        self.fourier
+            .data
+            .split_into(decomposition_level_count)
+            .enumerate()
+            .map(move |(i, slice)| {
+                FourierNgswLevelPolyView::from_container(
+                    slice,
+                    self.fourier.polynomial_size,
+                    DecompositionLevel(decomposition_level_count - i),
+                )
+            })
+    }
+}
+
+impl<'a> FourierNgswSplitBlockView<'a> {
     pub fn into_levels(self) -> impl DoubleEndedIterator<Item = FourierNgswLevelPolyView<'a>> {
         let decomposition_level_count = self.decomposition_level_count.0;
         self.fourier
@@ -134,7 +281,7 @@ impl<'a> FourierNgswCiphertextView<'a> {
             .split_into(decomposition_level_count)
             .enumerate()
             .map(move |(i, slice)| {
-                FourierNgswLevelPolyView::new(
+                FourierNgswLevelPolyView::from_container(
                     slice,
                     self.fourier.polynomial_size,
                     DecompositionLevel(decomposition_level_count - i),
@@ -152,16 +299,28 @@ impl FourierNgswCiphertextMutView<'_> {
     ) {
         assert_eq!(standard_ngsw.polynomial_size(), self.polynomial_size());
         let fourier_poly_size = standard_ngsw.polynomial_size().to_fourier_polynomial_size().0;
+        let fft_type = self.fft_type;
 
-        for (fourier_poly, standard_poly) in izip!(
-            self.data().into_chunks(fourier_poly_size),
-            standard_ngsw.as_polynomial_list().iter()
-        ) {
-            fft.forward_as_torus(
-                FourierPolynomialMutView { data: fourier_poly },
-                standard_poly,
-                stack,
-            );
+        assert!(
+            fft_type == FftType::Vanilla,
+            "Split FFT is not implemented yet"
+        );
+        match fft_type {
+            FftType::Vanilla => {
+                for (fourier_poly, standard_poly) in izip!(
+                    self.data().into_chunks(fourier_poly_size),
+                    standard_ngsw.as_polynomial_list().iter()
+                ) {
+                    fft.forward_as_torus(
+                        FourierPolynomialMutView { data: fourier_poly },
+                        standard_poly,
+                        stack,
+                    );
+                }
+            },
+            FftType::Split(_) => {
+                // To be implemented
+            },
         }
     }
 }
@@ -173,11 +332,13 @@ impl FourierNgswCiphertextOwned {
         polynomial_size: PolynomialSize,
         decomposition_base_log: DecompositionBaseLog,
         decomposition_level_count: DecompositionLevelCount,
+        fft_type: FftType,
     ) -> Self {
         let boxed = avec![
             c64::default();
             polynomial_size.to_fourier_polynomial_size().0
                 * decomposition_level_count.0
+                * fft_type.num_split()
         ]
         .into_boxed_slice();
 
@@ -186,6 +347,7 @@ impl FourierNgswCiphertextOwned {
             polynomial_size,
             decomposition_base_log,
             decomposition_level_count,
+            fft_type,
         )
     }
 }

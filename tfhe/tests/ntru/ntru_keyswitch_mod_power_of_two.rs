@@ -37,7 +37,12 @@ pub fn main() {
         ntru_noise_distribution,
         &mut encryption_generator,
     );
-    let mut fourier_ntru_ksk = FourierNtruKeyswitchKey::new(polynomial_size, decomp_base_log, decomp_level_count);
+    let mut fourier_ntru_ksk = FourierNtruKeyswitchKey::new(
+        polynomial_size,
+        decomp_base_log,
+        decomp_level_count,
+        FftType::Vanilla,
+    );
     convert_standard_ntru_keyswitch_key_to_fourier(&ntru_ksk, &mut fourier_ntru_ksk);
 
     // NTRU message parameters
