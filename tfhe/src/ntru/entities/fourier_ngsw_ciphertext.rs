@@ -1,4 +1,5 @@
 use crate::core_crypto::commons::traits::*;
+use crate::core_crypto::entities::*;
 use crate::core_crypto::commons::parameters::*;
 use crate::core_crypto::commons::utils::izip;
 use crate::core_crypto::commons::math::decomposition::DecompositionLevel;
@@ -298,30 +299,49 @@ impl FourierNgswCiphertextMutView<'_> {
         stack: &mut PodStack,
     ) {
         assert_eq!(standard_ngsw.polynomial_size(), self.polynomial_size());
-        let fourier_poly_size = standard_ngsw.polynomial_size().to_fourier_polynomial_size().0;
-        let fft_type = self.fft_type;
+        let polynomial_size = self.polynomial_size();
+        let fourier_poly_size = polynomial_size.to_fourier_polynomial_size().0;
 
-        assert!(
-            fft_type == FftType::Vanilla,
-            "Split FFT is not implemented yet"
-        );
-        match fft_type {
-            FftType::Vanilla => {
+        let fft_type = self.fft_type;
+        let mut poly_buffer = Polynomial::new(Scalar::ZERO, polynomial_size);
+
+        self.data().split_into(fft_type.num_split())
+            .enumerate()
+            .for_each(|(split_idx, split_fourier)| {
                 for (fourier_poly, standard_poly) in izip!(
-                    self.data().into_chunks(fourier_poly_size),
-                    standard_ngsw.as_polynomial_list().iter()
+                    split_fourier.into_chunks(fourier_poly_size),
+                    standard_ngsw.as_polynomial_list().iter(),
                 ) {
-                    fft.forward_as_torus(
-                        FourierPolynomialMutView { data: fourier_poly },
-                        standard_poly,
-                        stack,
-                    );
+                    match fft_type {
+                        FftType::Vanilla => {
+                            fft.forward_as_torus(
+                                FourierPolynomialMutView { data: fourier_poly },
+                                standard_poly,
+                                stack,
+                            );
+                        },
+                        FftType::Split(b) => {
+                            let (lsh_bit, rsh_bit) = if split_idx == 0 {
+                                (Scalar::BITS - b, Scalar::BITS - b)
+                            } else {
+                                (0, b)
+                            };
+
+                            for (standard_coeff, split_coeff)
+                                in standard_poly.iter().zip(poly_buffer.iter_mut())
+                            {
+                                *split_coeff = ((*standard_coeff) << lsh_bit) >> rsh_bit;
+                            }
+
+                            fft.forward_as_torus(
+                                FourierPolynomialMutView { data: fourier_poly },
+                                poly_buffer.as_view(),
+                                stack,
+                            );
+                        },
+                    }
                 }
-            },
-            FftType::Split(_) => {
-                // To be implemented
-            },
-        }
+            });
     }
 }
 

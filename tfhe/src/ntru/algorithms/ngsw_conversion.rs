@@ -14,8 +14,16 @@ pub fn convert_standard_ngsw_ciphertext_to_fourier<Scalar, InputCont, OutputCont
     InputCont: Container<Element = Scalar>,
     OutputCont: ContainerMut<Element = c64>,
 {
+    assert!(
+        input_ngsw.ciphertext_modulus().into_modulus_log().0 > output_ngsw.fft_type().split_base_log(),
+        "Log of ciphertext modulus should be greater than FFT split base log. \
+        Log of ciphertext modulus is {:?}, and split base log is {}.",
+        input_ngsw.ciphertext_modulus().into_modulus_log(),
+        output_ngsw.fft_type().split_base_log(),
+    );
+
     let fft = Fft::new(output_ngsw.polynomial_size());
-    let fft =fft.as_view();
+    let fft = fft.as_view();
 
     let mut buffers = ComputationBuffers::new();
     buffers.resize(

@@ -1,4 +1,5 @@
 use crate::core_crypto::commons::traits::*;
+use crate::core_crypto::algorithms::slice_algorithms::*;
 use crate::core_crypto::commons::math::decomposition::SignedDecomposer;
 use crate::core_crypto::commons::parameters::*;
 use crate::core_crypto::fft_impl::fft64::crypto::ggsw::{collect_next_term, update_with_fmadd};
@@ -41,16 +42,51 @@ pub fn add_ntru_external_product_assign<Scalar>(
 {
     assert_eq!(ngsw.polynomial_size(), ntru.polynomial_size());
     assert_eq!(ngsw.polynomial_size(), out.polynomial_size());
-    assert!(
-        ngsw.fft_type() == FftType::Vanilla,
-        "Split FFt is not implemented yet",
-    );
+    assert_eq!(ngsw.polynomial_size(), fft.polynomial_size());
+    assert_eq!(out.ciphertext_modulus(), ntru.ciphertext_modulus());
 
-    let fourier_poly_size = ngsw.polynomial_size().to_fourier_polynomial_size().0;
+    let polynomial_size = out.polynomial_size();
+    let ciphertext_modulus = out.ciphertext_modulus();
+
+    let fft_type = ngsw.fft_type();
+    let split_base_log = fft_type.split_base_log();
+
+    let mut external_product_buffer = NtruCiphertext::new(Scalar::ZERO, polynomial_size, ciphertext_modulus);
+
+    ngsw.into_splits().rev().enumerate()
+        .for_each(|(i, ngsw_split)| {
+            add_ntru_split_external_product_assign(
+                &mut external_product_buffer.as_mut_view(),
+                ngsw_split.as_view(),
+                ntru.as_view(),
+                fft,
+                stack,
+            );
+            if i == 0 {
+                slice_wrapping_scalar_mul_assign(
+                    external_product_buffer.as_mut(),
+                    Scalar::ONE << split_base_log,
+                );
+            }
+        });
+
+    slice_wrapping_add_assign(out.as_mut(), external_product_buffer.as_ref());
+}
+
+fn add_ntru_split_external_product_assign<Scalar>(
+    out: &mut NtruCiphertextMutView<'_, Scalar>,
+    ngsw_split: FourierNgswSplitBlockView<'_>,
+    ntru: NtruCiphertextView<Scalar>,
+    fft: FftView<'_>,
+    stack: &mut PodStack,
+) where
+    Scalar: UnsignedTorus,
+{
+    let fourier_poly_size = ngsw_split.polynomial_size().to_fourier_polynomial_size().0;
 
     let decomposer = SignedDecomposer::<Scalar>::new(
-        ngsw.decomposition_base_log(),
-        ngsw.decomposition_level_count(),
+        ngsw_split.decomposition_base_log(),
+        ngsw_split.decomposition_level_count(),
     );
 
     let (output_fft_buffer, substack0)
@@ -74,12 +110,12 @@ pub fn add_ntru_external_product_assign<Scalar>(
             substack0,
         );
 
-        ngsw.into_levels().for_each(|ngsw_decomp_poly| {
+        ngsw_split.into_levels().for_each(|ngsw_decomp_poly| {
             let (ntru_level, ntru_decomp_poly, substack2)
                 = collect_next_term(&mut decomposition, substack1, CACHELINE_ALIGN);
             let ntru_decomp_poly = NtruCiphertextView::from_container(
                 &*ntru_decomp_poly,
-                ngsw.polynomial_size(),
+                ngsw_split.polynomial_size(),
                 out.ciphertext_modulus(),
             );
             assert_eq!(ngsw_decomp_poly.decomposition_level(), ntru_level);

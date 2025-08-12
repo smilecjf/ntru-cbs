@@ -50,8 +50,8 @@ pub fn main() {
     );
 
     // NGSW decomposition parameter
-    let decomp_base_log = DecompositionBaseLog(12);
-    let decomp_level_count = DecompositionLevelCount(3);
+    let decomp_base_log = DecompositionBaseLog(18);
+    let decomp_level_count = DecompositionLevelCount(2);
 
     let mut ngsw_ciphertext = NgswCiphertext::new(
         Scalar::ZERO,
@@ -66,6 +66,13 @@ pub fn main() {
         decomp_base_log,
         decomp_level_count,
         FftType::Vanilla,
+    );
+
+    let mut split_fourier_ngsw_ciphertext = FourierNgswCiphertext::new(
+        polynomial_size,
+        decomp_base_log,
+        decomp_level_count,
+        FftType::Split(45),
     );
 
     let num_test = 10;
@@ -94,14 +101,6 @@ pub fn main() {
             &mut encryption_generator,
         );
 
-        convert_standard_ngsw_ciphertext_to_fourier(&ngsw_ciphertext, &mut fourier_ngsw_ciphertext);
-
-        let mut output = NtruCiphertext::new(
-            Scalar::ZERO,
-            polynomial_size,
-            ciphertext_modulus,
-        );
-
         let fft = Fft::new(polynomial_size);
         let fft = fft.as_view();
 
@@ -115,6 +114,16 @@ pub fn main() {
             .unaligned_bytes_required(),
         );
         let stack = computation_buffers.stack();
+
+
+        // Vanilla FFT-based external product
+        convert_standard_ngsw_ciphertext_to_fourier(&ngsw_ciphertext, &mut fourier_ngsw_ciphertext);
+
+        let mut output = NtruCiphertext::new(
+            Scalar::ZERO,
+            polynomial_size,
+            ciphertext_modulus,
+        );
 
         add_ntru_external_product_assign(
             &mut output.as_mut_view(),
@@ -136,7 +145,42 @@ pub fn main() {
             ciphertext_modulus.get_power_of_two_scaling_to_native_torus(),
             delta,
         );
-        println!("[Test {idx}] Max error: {:.3} bits", (max_err as f64).log2());
+
+        // Split FFT-based external product
+        convert_standard_ngsw_ciphertext_to_fourier(&ngsw_ciphertext, &mut split_fourier_ngsw_ciphertext);
+
+        let mut split_output = NtruCiphertext::new(
+            Scalar::ZERO,
+            polynomial_size,
+            ciphertext_modulus,
+        );
+
+        add_ntru_external_product_assign(
+            &mut split_output.as_mut_view(),
+            split_fourier_ngsw_ciphertext.as_view(),
+            ntru_ciphertext.as_view(),
+            fft,
+            stack,
+        );
+
+        decrypt_ntru_ciphertext(
+            &ntru_secret_key,
+            &split_output,
+            &mut decrypted_plaintext_list,
+        );
+
+        let split_max_err = get_max_error(
+            &decrypted_plaintext_list,
+            &correct_val_list,
+            ciphertext_modulus.get_power_of_two_scaling_to_native_torus(),
+            delta,
+        );
+
+        println!(
+            "[Test {idx}] Vanilla max error: {:.3} bits, Split max error: {:.3} bits",
+            (max_err as f64).log2(),
+            (split_max_err as f64).log2(),
+        );
     }
 }
 
