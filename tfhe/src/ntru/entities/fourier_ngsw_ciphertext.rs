@@ -251,27 +251,6 @@ impl<'a> FourierNgswCiphertextView<'a> {
                 )
             })
     }
-
-    pub fn into_levels(self) -> impl DoubleEndedIterator<Item = FourierNgswLevelPolyView<'a>> {
-        // TODO: remove this after finishing split FFT
-        assert!(
-            self.fft_type == FftType::Vanilla,
-            "[FourierNgswCiphertext] into_levels is only supported for non split-FFT"
-        );
-
-        let decomposition_level_count = self.decomposition_level_count.0;
-        self.fourier
-            .data
-            .split_into(decomposition_level_count)
-            .enumerate()
-            .map(move |(i, slice)| {
-                FourierNgswLevelPolyView::from_container(
-                    slice,
-                    self.fourier.polynomial_size,
-                    DecompositionLevel(decomposition_level_count - i),
-                )
-            })
-    }
 }
 
 impl<'a> FourierNgswSplitBlockView<'a> {

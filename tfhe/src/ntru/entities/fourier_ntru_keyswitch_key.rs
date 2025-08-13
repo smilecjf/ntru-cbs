@@ -1,11 +1,8 @@
 use crate::core_crypto::commons::traits::*;
 use crate::core_crypto::commons::parameters::*;
-use crate::core_crypto::fft_impl::fft64::math::fft::{FftView, FourierPolynomialList};
-use crate::core_crypto::fft_impl::fft64::math::polynomial::FourierPolynomialMutView;
-use crate::core_crypto::commons::utils::izip;
+use crate::core_crypto::fft_impl::fft64::math::fft::FourierPolynomialList;
 use crate::ntru::entities::*;
 
-use dyn_stack::PodStack;
 use aligned_vec::{avec, ABox};
 use tfhe_fft::c64;
 
@@ -105,32 +102,18 @@ impl<C: Container<Element = c64>> FourierNtruKeyswitchKey<C> {
             fft_type: self.fft_type,
         }
     }
-}
 
-impl FourierNtruKeyswitchKeyMutView<'_> {
-    pub fn fill_with_forward_fourier<Scalar: UnsignedTorus>(
-        self,
-        standard_ntru_ksk: NtruKeyswitchKeyView<'_, Scalar>,
-        fft: FftView<'_>,
-        stack: &mut PodStack,
-    ) {
-        assert_eq!(
-            standard_ntru_ksk.polynomial_size(),
-            self.polynomial_size(),
-        );
-
-        let fourier_polynomial_size = standard_ntru_ksk.polynomial_size().to_fourier_polynomial_size().0;
-
-        for (fourier_poly, standard_poly) in izip!(
-            self.data().into_chunks(fourier_polynomial_size),
-            standard_ntru_ksk.as_polynomial_list().iter()
-        ) {
-            fft.forward_as_torus(
-                FourierPolynomialMutView { data: fourier_poly },
-                standard_poly,
-                stack,
-            );
-        }
+    pub fn as_mut_fourier_ngsw_ciphertext(&mut self) -> FourierNgswCiphertextMutView<'_>
+    where
+        C: AsMut<[c64]>,
+    {
+        FourierNgswCiphertext::from_container(
+            self.fourier.data.as_mut(),
+            self.fourier.polynomial_size,
+            self.decomp_base_log,
+            self.decomp_level_count,
+            self.fft_type,
+        )
     }
 }
 

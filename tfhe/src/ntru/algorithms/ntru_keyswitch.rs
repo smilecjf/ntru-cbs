@@ -1,7 +1,7 @@
 use crate::core_crypto::commons::computation_buffers::ComputationBuffers;
 use crate::core_crypto::commons::traits::*;
 use crate::core_crypto::fft_impl::fft64::math::fft::{Fft, FftView};
-use crate::ntru::algorithms::{add_ntru_external_product_assign, add_ntru_external_product_assign_scratch};
+use crate::ntru::algorithms::{add_ntru_external_product_assign, add_ntru_external_product_assign_scratch, convert_standard_ngsw_ciphertext_to_fourier_mem_optimized, convert_standard_ngsw_ciphertext_to_fourier_mem_optimized_requirement};
 use crate::ntru::entities::*;
 use dyn_stack::{PodStack, SizeOverflow, StackReq};
 use tfhe_fft::c64;
@@ -51,7 +51,7 @@ pub fn convert_standard_ntru_keyswitch_key_to_fourier<Scalar, InputCont, OutputC
 pub fn convert_standard_ntru_keyswitch_key_to_fourier_mem_optimized_requirement(
     fft: FftView<'_>,
 ) -> Result<StackReq, SizeOverflow> {
-    fft.forward_scratch()
+    convert_standard_ngsw_ciphertext_to_fourier_mem_optimized_requirement(fft)
 }
 
 pub fn convert_standard_ntru_keyswitch_key_to_fourier_mem_optimized<Scalar, InputCont, OutputCont>(
@@ -64,9 +64,12 @@ pub fn convert_standard_ntru_keyswitch_key_to_fourier_mem_optimized<Scalar, Inpu
     InputCont: Container<Element = Scalar>,
     OutputCont: ContainerMut<Element = c64>,
 {
-    fourier_ntru_ksk
-        .as_mut_view()
-        .fill_with_forward_fourier(standard_ntru_ksk.as_view(), fft, stack);
+    convert_standard_ngsw_ciphertext_to_fourier_mem_optimized(
+        &standard_ntru_ksk.as_ngsw_ciphertext(),
+        &mut fourier_ntru_ksk.as_mut_fourier_ngsw_ciphertext(),
+        fft,
+        stack,
+    );
 }
 
 pub fn keyswitch_ntru_ciphertext<Scalar, KskCont, InputCont, OutputCont>(

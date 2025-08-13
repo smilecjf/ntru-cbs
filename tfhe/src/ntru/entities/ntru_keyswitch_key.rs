@@ -113,7 +113,6 @@ impl<Scalar: UnsignedInteger, C: Container<Element = Scalar>> NtruKeyswitchKey<C
         )
     }
 
-    // TODO: delete it if it is unnecessary
     pub fn as_ngsw_ciphertext(&self) -> NgswCiphertextView<'_, Scalar> {
         NgswCiphertext::from_container(
             self.as_ref(),
@@ -160,7 +159,6 @@ impl<Scalar: UnsignedInteger, C: ContainerMut<Element = Scalar>> NtruKeyswitchKe
         )
     }
 
-    // TODO: delete it if it is unnecessary
     pub fn as_mut_ngsw_ciphertext(&mut self) -> NgswCiphertextMutView<'_, Scalar> {
         let polynomial_size = self.polynomial_size;
         let decomp_base_log = self.decomp_base_log;
