@@ -7,6 +7,8 @@ pub mod ntru_keyswitch_key;
 pub mod fourier_ntru_keyswitch_key;
 pub mod ntru_automorphism_key;
 pub mod fourier_ntru_automorphism_key;
+pub mod ntru_switching_key;
+pub mod fourier_ntru_switching_key;
 
 pub use ntru_secret_key::*;
 pub use ntru_ciphertext::*;
@@ -17,3 +19,5 @@ pub use ntru_keyswitch_key::*;
 pub use fourier_ntru_keyswitch_key::*;
 pub use ntru_automorphism_key::*;
 pub use fourier_ntru_automorphism_key::*;
+pub use ntru_switching_key::*;
+pub use fourier_ntru_switching_key::*;

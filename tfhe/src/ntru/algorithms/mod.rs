@@ -6,6 +6,8 @@ pub mod ntru_keyswitch;
 pub mod ngsw_encryption;
 pub mod ngsw_conversion;
 pub mod ngsw_external_product;
+pub mod ntru_switching_key_generation;
+pub mod ntru_switching;
 pub mod ntru_automorphism_key_generation;
 pub mod ntru_automorphism;
 
@@ -17,5 +19,7 @@ pub use ntru_keyswitch::*;
 pub use ngsw_encryption::*;
 pub use ngsw_conversion::*;
 pub use ngsw_external_product::*;
+pub use ntru_switching_key_generation::*;
+pub use ntru_switching::*;
 pub use ntru_automorphism_key_generation::*;
 pub use ntru_automorphism::*;

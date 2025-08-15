@@ -1,0 +1,155 @@
+use crate::core_crypto::commons::traits::*;
+use crate::core_crypto::commons::parameters::*;
+use crate::core_crypto::fft_impl::fft64::math::fft::FourierPolynomialList;
+use crate::ntru::entities::*;
+
+use aligned_vec::{avec, ABox};
+use tfhe_fft::c64;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FourierNtruSwitchingKey<C: Container<Element = c64>> {
+    fourier: FourierPolynomialList<C>,
+    decomp_base_log: DecompositionBaseLog,
+    decomp_level_count: DecompositionLevelCount,
+    fft_type: FftType,
+}
+
+pub type FourierNtruSwitchingKeyView<'a> = FourierNtruSwitchingKey<&'a [c64]>;
+pub type FourierNtruSwitchingKeyMutView<'a> = FourierNtruSwitchingKey<&'a mut [c64]>;
+
+impl<C: Container<Element = c64>> FourierNtruSwitchingKey<C> {
+    pub fn from_container(
+        data: C,
+        polynomial_size: PolynomialSize,
+        decomp_base_log: DecompositionBaseLog,
+        decomp_level_count: DecompositionLevelCount,
+        fft_type: FftType,
+    ) -> Self {
+        assert_eq!(
+            data.container_len(),
+            polynomial_size.to_fourier_polynomial_size().0
+                * decomp_level_count.0
+                * fft_type.num_split()
+        );
+
+        Self {
+            fourier: FourierPolynomialList {
+                data,
+                polynomial_size,
+            },
+            decomp_base_log,
+            decomp_level_count,
+            fft_type,
+        }
+    }
+
+    pub fn polynomial_size(&self) -> PolynomialSize {
+        self.fourier.polynomial_size
+    }
+
+    pub fn decomposition_base_log(&self) -> DecompositionBaseLog {
+        self.decomp_base_log
+    }
+
+    pub fn decomposition_level_count(&self) -> DecompositionLevelCount {
+        self.decomp_level_count
+    }
+
+    pub fn fft_type(&self) -> FftType {
+        self.fft_type
+    }
+
+    pub fn data(self) -> C {
+        self.fourier.data
+    }
+
+    pub fn as_view(&self) -> FourierNtruSwitchingKeyView<'_>
+    where
+        C: AsRef<[c64]>
+    {
+        FourierNtruSwitchingKeyView {
+            fourier: FourierPolynomialList {
+                data: self.fourier.data.as_ref(),
+                polynomial_size: self.fourier.polynomial_size,
+            },
+            decomp_base_log: self.decomp_base_log,
+            decomp_level_count: self.decomp_level_count,
+            fft_type: self.fft_type,
+        }
+    }
+
+    pub fn as_fourier_ngsw_ciphertext(&self) -> FourierNgswCiphertextView<'_> {
+        FourierNgswCiphertext::from_container(
+            self.fourier.data.as_ref(),
+            self.fourier.polynomial_size,
+            self.decomp_base_log,
+            self.decomp_level_count,
+            self.fft_type,
+        )
+    }
+
+    pub fn as_fourier_ntru_keyswitch_key(&self) -> FourierNtruKeyswitchKeyView<'_> {
+        FourierNtruKeyswitchKey::from_container(
+            self.fourier.data.as_ref(),
+            self.fourier.polynomial_size,
+            self.decomp_base_log,
+            self.decomp_level_count,
+            self.fft_type,
+        )
+    }
+
+    pub fn as_mut_view(&mut self) -> FourierNtruSwitchingKeyMutView<'_>
+    where
+        C: AsMut<[c64]>,
+    {
+        FourierNtruSwitchingKeyMutView {
+            fourier: FourierPolynomialList {
+                data: self.fourier.data.as_mut(),
+                polynomial_size: self.fourier.polynomial_size,
+            },
+            decomp_base_log: self.decomp_base_log,
+            decomp_level_count: self.decomp_level_count,
+            fft_type: self.fft_type,
+        }
+    }
+
+    pub fn as_mut_fourier_ngsw_ciphertext(&mut self) -> FourierNgswCiphertextMutView<'_>
+    where
+        C: AsMut<[c64]>,
+    {
+        FourierNgswCiphertext::from_container(
+            self.fourier.data.as_mut(),
+            self.fourier.polynomial_size,
+            self.decomp_base_log,
+            self.decomp_level_count,
+            self.fft_type,
+        )
+    }
+}
+
+type FourierNtruSwitchingKeyOwned = FourierNtruSwitchingKey<ABox<[c64]>>;
+
+impl FourierNtruSwitchingKeyOwned {
+    pub fn new(
+        polynomial_size: PolynomialSize,
+        decomp_base_log: DecompositionBaseLog,
+        decomp_level_count: DecompositionLevelCount,
+        fft_type: FftType,
+    ) -> Self {
+        let boxed = avec![
+            c64::default();
+            polynomial_size.to_fourier_polynomial_size().0
+                * decomp_level_count.0
+                * fft_type.num_split()
+        ]
+        .into_boxed_slice();
+
+        FourierNtruSwitchingKey::from_container(
+            boxed,
+            polynomial_size,
+            decomp_base_log,
+            decomp_level_count,
+            fft_type,
+        )
+    }
+}
