@@ -85,6 +85,12 @@ impl<Scalar: UnsignedInteger, C: Container<Element = Scalar>> NtruSecretKey<C> {
         )
     }
 
+    pub fn as_polynomial_list(&self) -> PolynomialListView<'_, Scalar> {
+        PolynomialList::from_container(
+            self.data.as_ref(),
+            self.polynomial_size,
+        )
+    }
 }
 
 impl<Scalar: UnsignedInteger, C: ContainerMut<Element = Scalar>> NtruSecretKey<C> {
@@ -92,6 +98,13 @@ impl<Scalar: UnsignedInteger, C: ContainerMut<Element = Scalar>> NtruSecretKey<C
         let polynomial_size = self.polynomial_size;
         let ciphertext_modulus = self.ciphertext_modulus;
         NtruSecretKey::from_container(self.as_mut(), polynomial_size, ciphertext_modulus)
+    }
+
+    pub fn as_mut_polynomial_list(&mut self) -> PolynomialListMutView<'_, Scalar> {
+        PolynomialList::from_container(
+            self.data.as_mut(),
+            self.polynomial_size,
+        )
     }
 }
 

@@ -314,6 +314,16 @@ name = "ntru_keyswitch_mod_power_of_two"
 path = "tests/ntru/ntru_keyswitch_mod_power_of_two.rs"
 harness = false
 
+[[test]]
+name = "ntru_automorphism_native_mod"
+path = "tests/ntru/ntru_automorphism_native_mod.rs"
+harness = false
+
+[[test]]
+name = "ntru_automorphism_mod_power_of_two"
+path = "tests/ntru/ntru_automorphism_mod_power_of_two.rs"
+harness = false
+
 [lib]
 crate-type = ["lib", "staticlib", "cdylib"]
 

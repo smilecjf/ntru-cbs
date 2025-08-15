@@ -95,7 +95,9 @@ impl<Scalar: UnsignedInteger> NtruCiphertextListOwned<Scalar> {
         ciphertext_modulus: CiphertextModulus<Scalar>,
     ) -> Self {
         Self::from_container(
-            vec![fill_with; ciphertext_count.0],
+            vec![fill_with;
+                polynomial_size.0 * ciphertext_count.0
+            ],
             polynomial_size,
             ciphertext_modulus,
         )
