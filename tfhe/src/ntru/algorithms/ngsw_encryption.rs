@@ -113,6 +113,89 @@ pub fn encrypt_constant_ngsw_ciphertext<Scalar, NoiseDistribution, KeyCont, Outp
     }
 }
 
+pub fn encrypt_monomial_ngsw_ciphertext<Scalar, NoiseDistribution, KeyCont, OutputCont, Gen>(
+    ntru_secret_key: &NtruSecretKey<KeyCont>,
+    output: &mut NgswCiphertext<OutputCont>,
+    monomial_degree: MonomialDegree,
+    noise_distribution: NoiseDistribution,
+    generator: &mut EncryptionRandomGenerator<Gen>,
+) where
+    Scalar: Encryptable<Uniform, NoiseDistribution>,
+    Scalar: std::fmt::Display + CastInto<f64>,
+    NoiseDistribution: Distribution,
+    KeyCont: Container<Element = Scalar>,
+    OutputCont: ContainerMut<Element = Scalar>,
+    Gen: ByteRandomGenerator,
+{
+    assert!(
+        output.polynomial_size() == ntru_secret_key.polynomial_size(),
+        "Mismatch between polynomial sizes of output ciphertext and input secret key. \
+        Got {:?} in output, and {:?} in secret key.",
+        output.polynomial_size(),
+        ntru_secret_key.polynomial_size(),
+    );
+
+    assert!(
+        output.ciphertext_modulus() == ntru_secret_key.ciphertext_modulus(),
+        "Mismatch between ciphertext moduli of output ciphertext and input secret key. \
+        Got {:?} in output, and {:?} in secret key.",
+        output.ciphertext_modulus(),
+        ntru_secret_key.ciphertext_modulus(),
+    );
+
+    assert!(
+        output.ciphertext_modulus().is_power_of_two(),
+        "Only support poewr-of-two modulus currently."
+    );
+
+    let polynomial_size = output.polynomial_size();
+    let decomp_base_log = output.decomposition_base_log();
+    let decomp_level_count = output.decomposition_level_count();
+    let ciphertext_modulus = output.ciphertext_modulus();
+
+    let sign = if monomial_degree.0 % (2 * polynomial_size.0) < polynomial_size.0 { Scalar::ONE } else { Scalar::MAX };
+    let monomial_degree = monomial_degree.0 % polynomial_size.0;
+
+    let sk_inv_poly = ntru_secret_key.get_secret_key_inverse_polynomial();
+    let mut buf = Polynomial::new(Scalar::ZERO, polynomial_size);
+
+    for (level, mut ntru_ciphertext) in (1..=decomp_level_count.0)
+        .rev()
+        .map(DecompositionLevel)
+        .zip(output.iter_mut())
+    {
+        let factor = ngsw_encryption_multiplicative_factor(
+            ciphertext_modulus,
+            level,
+            decomp_base_log,
+            Cleartext(Scalar::ONE),
+        ).wrapping_mul(sign);
+
+        generator.unsigned_integer_slice_wrapping_add_random_noise_from_distribution_custom_mod_assign(
+            buf.as_mut(),
+            noise_distribution,
+            ciphertext_modulus,
+        );
+
+        polynomial_wrapping_mul(
+            &mut ntru_ciphertext.as_mut_polynomial(),
+            &buf,
+            &sk_inv_poly,
+        );
+
+        ntru_ciphertext.as_mut()[monomial_degree] = ntru_ciphertext.as_mut()[monomial_degree].wrapping_add(factor);
+
+        if !ciphertext_modulus.is_native_modulus() {
+            let torus_scaling = ciphertext_modulus.get_power_of_two_scaling_to_native_torus();
+            slice_wrapping_scalar_mul_assign(
+                ntru_ciphertext.as_mut(),
+                torus_scaling,
+            );
+        }
+
+    }
+}
+
 pub fn decrypt_constant_ngsw_ciphertext<Scalar, KeyCont, InputCont>(
     ntru_secret_key: &NtruSecretKey<KeyCont>,
     ngsw_ciphertext: &NgswCiphertext<InputCont>,

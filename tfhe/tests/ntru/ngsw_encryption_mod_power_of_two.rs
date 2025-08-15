@@ -31,9 +31,8 @@ pub fn main() {
     let mut err_list = PlaintextList::new(Scalar::ZERO, PlaintextCount(polynomial_size.0));
 
     let num_test = 10;
-    for i in 0..num_test {
+    for idx in 1..=num_test {
         let a = rand::thread_rng().gen_range(0..Scalar::ONE << decomp_base_log.0);
-
         encrypt_constant_ngsw_ciphertext(
             &ntru_secret_key,
             &mut ngsw_ciphertext,
@@ -67,11 +66,46 @@ pub fn main() {
             max_err = std::cmp::max(max_err, err);
         }
 
-        println!("[{i}] input: {}, decrypted: {}, err: {:.3} bits", a.into_signed(), decrypted.0.into_signed(), (max_err as f64).log2());
+        println!("[Test {idx} constant enc] input: {}, decrypted: {}, err: {:.3} bits", a.into_signed(), decrypted.0.into_signed(), (max_err as f64).log2());
 
         if a != decrypted.0 {
             println!("Invalid result");
             return;
         }
+
+        let monomial_degree = rand::thread_rng().gen_range(0..(2 * polynomial_size.0));
+        let monomial_degree = MonomialDegree(monomial_degree);
+        encrypt_monomial_ngsw_ciphertext(
+            &ntru_secret_key,
+            &mut ngsw_ciphertext,
+            monomial_degree,
+            ntru_noise_distribution,
+            &mut encryption_generator,
+        );
+
+        let mut first_row = NtruCiphertext::new(Scalar::ZERO, polynomial_size, ciphertext_modulus);
+        first_row.as_mut().clone_from_slice(ngsw_ciphertext.first().unwrap().as_ref());
+
+        let sign = if monomial_degree.0 < polynomial_size.0 { Scalar::ONE } else { Scalar::MAX };
+        let degree_idx = monomial_degree.0 % polynomial_size.0;
+
+        let factor = ngsw_encryption_multiplicative_factor(
+            ciphertext_modulus,
+            DecompositionLevel(decomp_level_count.0),
+            decomp_base_log,
+            Cleartext(Scalar::ONE),
+        ).wrapping_mul(sign).wrapping_mul(torus_scaling);
+        first_row.as_mut()[degree_idx] = first_row.as_mut()[degree_idx].wrapping_sub(factor);
+
+        decrypt_ntru_ciphertext(&ntru_secret_key, &first_row, &mut err_list);
+        let mut max_err = Scalar::ZERO;
+        for err in err_list.iter() {
+            let err = (*err.0).wrapping_mul(torus_scaling);
+            let err = std::cmp::min(err, err.wrapping_neg())
+                .wrapping_div(torus_scaling);
+            max_err = std::cmp::max(max_err, err);
+        }
+
+        println!("[Test {idx} monomial enc] input: {}, err: {:.3} bits", a.into_signed(), (max_err as f64).log2());
     }
 }
