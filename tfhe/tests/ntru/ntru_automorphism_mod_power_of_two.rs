@@ -35,7 +35,7 @@ pub fn main() {
     // NTRU message parameters
     let log_message_modulus = 4;
     let message_modulus = Scalar::ONE << log_message_modulus;
-    let delta = Scalar::ONE << (Scalar::BITS - log_message_modulus);
+    let delta = Scalar::ONE << (power - log_message_modulus);
 
     let mut input_message_list = PlaintextList::new(
         Scalar::ZERO,

@@ -138,7 +138,7 @@ pub fn main() {
         );
 
         println!(
-            "[Test {idx}] Vanilla KS max error: {:.3} bits, Split KS max error: {:.3}",
+            "[Test {idx}] Vanilla KS max error: {:.3} bits, Split KS max error: {:.3} bits",
             (max_err as f64).log2(),
             (split_max_err as f64).log2(),
         );

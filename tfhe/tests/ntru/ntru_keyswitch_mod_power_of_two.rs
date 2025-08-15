@@ -57,7 +57,7 @@ pub fn main() {
     // NTRU message parameters
     let log_message_modulus = 4;
     let message_modulus = Scalar::ONE << log_message_modulus;
-    let delta = Scalar::ONE << (Scalar::BITS - log_message_modulus);
+    let delta = Scalar::ONE << (power - log_message_modulus);
 
     let mut input_message_list = PlaintextList::new(
         Scalar::ZERO,
@@ -140,7 +140,7 @@ pub fn main() {
         );
 
         println!(
-            "[Test {idx}] Vanilla KS max error: {:.3} bits, Split KS max error: {:.3}",
+            "[Test {idx}] Vanilla KS max error: {:.3} bits, Split KS max error: {:.3} bits",
             (max_err as f64).log2(),
             (split_max_err as f64).log2(),
         );
