@@ -285,6 +285,16 @@ path = "tests/ntru/ntru_encryption_native_mod.rs"
 harness = false
 
 [[test]]
+name = "ntru_sample_extraction_native_mod"
+path = "tests/ntru/ntru_sample_extraction_native_mod.rs"
+harness = false
+
+[[test]]
+name = "ntru_sample_extraction_mod_power_of_two"
+path = "tests/ntru/ntru_sample_extraction_mod_power_of_two.rs"
+harness = false
+
+[[test]]
 name = "ngsw_encryption_mod_power_of_two"
 path = "tests/ntru/ngsw_encryption_mod_power_of_two.rs"
 harness = false

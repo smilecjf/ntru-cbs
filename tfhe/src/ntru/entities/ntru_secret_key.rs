@@ -91,6 +91,10 @@ impl<Scalar: UnsignedInteger, C: Container<Element = Scalar>> NtruSecretKey<C> {
             self.polynomial_size,
         )
     }
+
+    pub fn as_lwe_secret_key(&self) -> LweSecretKey<&[C::Element]> {
+        LweSecretKey::from_container(&self.data.as_ref()[0..self.polynomial_size.0])
+    }
 }
 
 impl<Scalar: UnsignedInteger, C: ContainerMut<Element = Scalar>> NtruSecretKey<C> {
@@ -144,4 +148,11 @@ where
         generate_binary_ntru_secret_key(&mut ntru_sk, ciphertext_modulus, generator);
         ntru_sk
     }
+
+    pub fn into_lwe_secret_key(self) -> LweSecretKeyOwned<Scalar>
+    {
+        let sk_poly = self.data[0..self.polynomial_size.0].to_vec();
+        LweSecretKey::from_container(sk_poly)
+    }
+
 }
