@@ -10,7 +10,6 @@ use tfhe_fft::c64;
 pub struct FourierNtruSwitchingKey<C: Container<Element = c64>> {
     fourier: FourierPolynomialList<C>,
     decomp_base_log: DecompositionBaseLog,
-    decomp_level_count: DecompositionLevelCount,
     fft_type: FftType,
 }
 
@@ -22,14 +21,19 @@ impl<C: Container<Element = c64>> FourierNtruSwitchingKey<C> {
         data: C,
         polynomial_size: PolynomialSize,
         decomp_base_log: DecompositionBaseLog,
-        decomp_level_count: DecompositionLevelCount,
         fft_type: FftType,
     ) -> Self {
-        assert_eq!(
+        assert!(
+            data.container_len() % (
+                polynomial_size.to_fourier_polynomial_size().0
+                    * fft_type.num_split()
+            ) == 0,
+            "The provided container length is not valid. \
+            It needs to be divisible by polynomial size * fft_type.num_split(). \
+            Got container length: {}, polynomial size {:?}, fft_type: {:?}.",
             data.container_len(),
-            polynomial_size.to_fourier_polynomial_size().0
-                * decomp_level_count.0
-                * fft_type.num_split()
+            polynomial_size,
+            fft_type,
         );
 
         Self {
@@ -38,7 +42,6 @@ impl<C: Container<Element = c64>> FourierNtruSwitchingKey<C> {
                 polynomial_size,
             },
             decomp_base_log,
-            decomp_level_count,
             fft_type,
         }
     }
@@ -52,7 +55,13 @@ impl<C: Container<Element = c64>> FourierNtruSwitchingKey<C> {
     }
 
     pub fn decomposition_level_count(&self) -> DecompositionLevelCount {
-        self.decomp_level_count
+        DecompositionLevelCount(
+            self.fourier.data.container_len() / (
+                self.fourier.polynomial_size
+                    .to_fourier_polynomial_size().0
+                    * self.fft_type.num_split()
+            )
+        )
     }
 
     pub fn fft_type(&self) -> FftType {
@@ -73,7 +82,6 @@ impl<C: Container<Element = c64>> FourierNtruSwitchingKey<C> {
                 polynomial_size: self.fourier.polynomial_size,
             },
             decomp_base_log: self.decomp_base_log,
-            decomp_level_count: self.decomp_level_count,
             fft_type: self.fft_type,
         }
     }
@@ -83,7 +91,6 @@ impl<C: Container<Element = c64>> FourierNtruSwitchingKey<C> {
             self.fourier.data.as_ref(),
             self.fourier.polynomial_size,
             self.decomp_base_log,
-            self.decomp_level_count,
             self.fft_type,
         )
     }
@@ -93,7 +100,6 @@ impl<C: Container<Element = c64>> FourierNtruSwitchingKey<C> {
             self.fourier.data.as_ref(),
             self.fourier.polynomial_size,
             self.decomp_base_log,
-            self.decomp_level_count,
             self.fft_type,
         )
     }
@@ -108,7 +114,6 @@ impl<C: Container<Element = c64>> FourierNtruSwitchingKey<C> {
                 polynomial_size: self.fourier.polynomial_size,
             },
             decomp_base_log: self.decomp_base_log,
-            decomp_level_count: self.decomp_level_count,
             fft_type: self.fft_type,
         }
     }
@@ -121,7 +126,6 @@ impl<C: Container<Element = c64>> FourierNtruSwitchingKey<C> {
             self.fourier.data.as_mut(),
             self.fourier.polynomial_size,
             self.decomp_base_log,
-            self.decomp_level_count,
             self.fft_type,
         )
     }
@@ -148,7 +152,6 @@ impl FourierNtruSwitchingKeyOwned {
             boxed,
             polynomial_size,
             decomp_base_log,
-            decomp_level_count,
             fft_type,
         )
     }

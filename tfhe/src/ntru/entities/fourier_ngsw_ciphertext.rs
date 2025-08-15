@@ -38,7 +38,6 @@ impl FftType {
 pub struct FourierNgswCiphertext<C: Container<Element = c64>> {
     fourier: FourierPolynomialList<C>,
     decomposition_base_log: DecompositionBaseLog,
-    decomposition_level_count: DecompositionLevelCount,
     fft_type: FftType,
 }
 
@@ -68,14 +67,19 @@ impl<C: Container<Element = c64>> FourierNgswCiphertext<C> {
         data: C,
         polynomial_size: PolynomialSize,
         decomposition_base_log: DecompositionBaseLog,
-        decomposition_level_count: DecompositionLevelCount,
         fft_type: FftType,
     ) -> Self {
-        assert_eq!(
+        assert!(
+            data.container_len() % (
+                polynomial_size.to_fourier_polynomial_size().0
+                    * fft_type.num_split()
+            ) == 0,
+            "The provided container length is not valid. \
+            It needs to be divisible by polynomial size * fft_type.num_split(). \
+            Got container length: {}, polynomial size {:?}, fft_type: {:?}.",
             data.container_len(),
-            polynomial_size.to_fourier_polynomial_size().0
-                * decomposition_level_count.0
-                * fft_type.num_split()
+            polynomial_size,
+            fft_type,
         );
 
         Self {
@@ -84,7 +88,6 @@ impl<C: Container<Element = c64>> FourierNgswCiphertext<C> {
                 polynomial_size,
             },
             decomposition_base_log,
-            decomposition_level_count,
             fft_type,
         }
     }
@@ -98,7 +101,13 @@ impl<C: Container<Element = c64>> FourierNgswCiphertext<C> {
     }
 
     pub fn decomposition_level_count(&self) -> DecompositionLevelCount {
-        self.decomposition_level_count
+        DecompositionLevelCount(
+            self.fourier.data.container_len() / (
+                self.fourier.polynomial_size
+                    .to_fourier_polynomial_size().0
+                    * self.fft_type.num_split()
+            )
+        )
     }
 
     pub fn fft_type(&self) -> FftType {
@@ -119,7 +128,6 @@ impl<C: Container<Element = c64>> FourierNgswCiphertext<C> {
                 polynomial_size: self.fourier.polynomial_size,
             },
             decomposition_base_log: self.decomposition_base_log,
-            decomposition_level_count: self.decomposition_level_count,
             fft_type: self.fft_type,
         }
     }
@@ -134,7 +142,6 @@ impl<C: Container<Element = c64>> FourierNgswCiphertext<C> {
                 polynomial_size: self.fourier.polynomial_size,
             },
             decomposition_base_log: self.decomposition_base_log,
-            decomposition_level_count: self.decomposition_level_count,
             fft_type: self.fft_type,
         }
     }
@@ -247,7 +254,7 @@ impl<'a> FourierNgswCiphertextView<'a> {
                     slice,
                     self.fourier.polynomial_size,
                     self.decomposition_base_log,
-                    self.decomposition_level_count,
+                    self.decomposition_level_count(),
                 )
             })
     }
@@ -345,7 +352,32 @@ impl FourierNgswCiphertextOwned {
             boxed,
             polynomial_size,
             decomposition_base_log,
-            decomposition_level_count,
+            fft_type,
+        )
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct FourierNgswCiphertextCreationMetadata {
+    pub polynomial_size: PolynomialSize,
+    pub decomposition_base_log: DecompositionBaseLog,
+    pub fft_type: FftType,
+}
+
+impl<C: Container<Element = c64>> CreateFrom<C> for FourierNgswCiphertext<C> {
+    type Metadata = FourierNgswCiphertextCreationMetadata;
+
+    #[inline]
+    fn create_from(from: C, meta: Self::Metadata) -> Self {
+        let FourierNgswCiphertextCreationMetadata {
+            polynomial_size,
+            decomposition_base_log,
+            fft_type,
+        } = meta;
+        Self::from_container(
+            from,
+            polynomial_size,
+            decomposition_base_log,
             fft_type,
         )
     }

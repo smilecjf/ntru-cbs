@@ -13,7 +13,6 @@ where
     data: C,
     polynomial_size: PolynomialSize,
     decomp_base_log: DecompositionBaseLog,
-    decomp_level_count: DecompositionLevelCount,
     ciphertext_modulus: CiphertextModulus<C::Element>,
 }
 
@@ -38,16 +37,13 @@ impl<Scalar: UnsignedInteger, C: Container<Element = Scalar>> NtruSwitchingKey<C
         container: C,
         polynomial_size: PolynomialSize,
         decomp_base_log: DecompositionBaseLog,
-        decomp_level_count: DecompositionLevelCount,
         ciphertext_modulus: CiphertextModulus<C::Element>,
     ) -> Self {
-        assert_eq!(
-            container.container_len(),
-            polynomial_size.0 * decomp_level_count.0,
-            "The provided container length is not valid. It shoulde be \
-            polynomial_size.0 * decomp_level_count.0. Got container length \
-            {}, polynomial_size {polynomial_size:?}, and decomp_level_count \
-            {decomp_level_count:?}.",
+        assert!(
+            container.container_len() % polynomial_size.0 == 0,
+            "The provided container length is not valid. \
+            It needs to be divisible by polynomial_size. \
+            Got container length: {}, polynomial size {polynomial_size:?}.",
             container.container_len(),
         );
         assert!(
@@ -59,7 +55,6 @@ impl<Scalar: UnsignedInteger, C: Container<Element = Scalar>> NtruSwitchingKey<C
             data: container,
             polynomial_size,
             decomp_base_log,
-            decomp_level_count,
             ciphertext_modulus,
         }
     }
@@ -73,7 +68,9 @@ impl<Scalar: UnsignedInteger, C: Container<Element = Scalar>> NtruSwitchingKey<C
     }
 
     pub fn decomposition_level_count(&self) -> DecompositionLevelCount {
-        self.decomp_level_count
+        DecompositionLevelCount(
+            self.data.container_len() / self.polynomial_size.0
+        )
     }
 
     pub fn ciphertext_modulus(&self) -> CiphertextModulus<C::Element> {
@@ -85,7 +82,6 @@ impl<Scalar: UnsignedInteger, C: Container<Element = Scalar>> NtruSwitchingKey<C
             self.data.as_ref(),
             self.polynomial_size,
             self.decomp_base_log,
-            self.decomp_level_count,
             self.ciphertext_modulus,
         )
     }
@@ -123,7 +119,6 @@ impl<Scalar: UnsignedInteger, C: Container<Element = Scalar>> NtruSwitchingKey<C
             self.data.as_ref(),
             self.polynomial_size,
             self.decomp_base_log,
-            self.decomp_level_count,
             self.ciphertext_modulus,
         )
     }
@@ -135,7 +130,6 @@ impl<Scalar: UnsignedInteger, C: ContainerMut<Element = Scalar>> NtruSwitchingKe
             self.data.as_mut(),
             self.polynomial_size,
             self.decomp_base_log,
-            self.decomp_level_count,
             self.ciphertext_modulus,
         )
     }
@@ -169,7 +163,6 @@ impl<Scalar: UnsignedInteger, C: ContainerMut<Element = Scalar>> NtruSwitchingKe
             self.data.as_mut(),
             self.polynomial_size,
             self.decomp_base_log,
-            self.decomp_level_count,
             self.ciphertext_modulus,
         )
     }
@@ -190,7 +183,6 @@ impl<Scalar: UnsignedInteger> NtruSwitchingKeyOwned<Scalar> {
             ],
             polynomial_size,
             decomp_base_log,
-            decomp_level_count,
             ciphertext_modulus,
         )
     }

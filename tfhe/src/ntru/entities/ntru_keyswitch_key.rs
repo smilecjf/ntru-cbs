@@ -13,7 +13,6 @@ where
     data: C,
     polynomial_size: PolynomialSize,
     decomp_base_log: DecompositionBaseLog,
-    decomp_level_count: DecompositionLevelCount,
     ciphertext_modulus: CiphertextModulus<C::Element>,
 }
 
@@ -38,20 +37,17 @@ impl<Scalar: UnsignedInteger, C: Container<Element = Scalar>> NtruKeyswitchKey<C
         container: C,
         polynomial_size: PolynomialSize,
         decomp_base_log: DecompositionBaseLog,
-        decomp_level_count: DecompositionLevelCount,
         ciphertext_modulus: CiphertextModulus<C::Element>,
     ) -> Self {
         assert!(
             container.container_len() > 0,
             "Got an empty container to create an NtruKeyswitchKey"
         );
-        assert_eq!(
-            container.container_len(),
-            polynomial_size.0 * decomp_level_count.0,
-            "The provided container length is not valid. It shoulde be \
-            polynomial_size.0 * decomp_level_count.0. Got container length \
-            {}, polynomial_size {polynomial_size:?}, and decomp_level_count \
-            {decomp_level_count:?}.",
+        assert!(
+            container.container_len() % polynomial_size.0 == 0,
+            "The provided container length is not valid. \
+            It needs to be divisible by polynomial_size. \
+            Got container length: {}, polynomial size {polynomial_size:?}.",
             container.container_len(),
         );
         assert!(
@@ -63,7 +59,6 @@ impl<Scalar: UnsignedInteger, C: Container<Element = Scalar>> NtruKeyswitchKey<C
             data: container,
             polynomial_size,
             decomp_base_log,
-            decomp_level_count,
             ciphertext_modulus,
         }
     }
@@ -77,7 +72,9 @@ impl<Scalar: UnsignedInteger, C: Container<Element = Scalar>> NtruKeyswitchKey<C
     }
 
     pub fn decomposition_level_count(&self) -> DecompositionLevelCount {
-        self.decomp_level_count
+        DecompositionLevelCount(
+            self.data.container_len() / self.polynomial_size.0
+        )
     }
 
     pub fn ciphertext_modulus(&self) -> CiphertextModulus<C::Element> {
@@ -89,7 +86,6 @@ impl<Scalar: UnsignedInteger, C: Container<Element = Scalar>> NtruKeyswitchKey<C
             self.as_ref(),
             self.polynomial_size,
             self.decomp_base_log,
-            self.decomp_level_count,
             self.ciphertext_modulus,
         )
     }
@@ -127,14 +123,12 @@ impl<Scalar: UnsignedInteger, C: ContainerMut<Element = Scalar>> NtruKeyswitchKe
     pub fn as_mut_view(&mut self) -> NtruKeyswitchKeyMutView<'_, Scalar> {
         let polynomial_size = self.polynomial_size;
         let decomp_base_log = self.decomp_base_log;
-        let decomp_level_count = self.decomp_level_count;
         let ciphertext_modulus = self.ciphertext_modulus;
 
         NtruKeyswitchKey::from_container(
             self.as_mut(),
             polynomial_size,
             decomp_base_log,
-            decomp_level_count,
             ciphertext_modulus,
         )
     }
@@ -188,7 +182,6 @@ impl<Scalar: UnsignedInteger> NtruKeyswitchKeyOwned<Scalar> {
             ],
             polynomial_size,
             decomp_base_log,
-            decomp_level_count,
             ciphertext_modulus,
         )
     }
@@ -198,7 +191,6 @@ impl<Scalar: UnsignedInteger> NtruKeyswitchKeyOwned<Scalar> {
 pub struct NtruKeyswitchKeyCreationMetadata<Scalar: UnsignedInteger> {
     pub polynomial_size: PolynomialSize,
     pub decomp_base_log: DecompositionBaseLog,
-    pub decomp_level_count: DecompositionLevelCount,
     pub ciphertext_modulus: CiphertextModulus<Scalar>,
 }
 
@@ -212,14 +204,12 @@ impl<Scalar: UnsignedInteger, C: Container<Element = Scalar>> CreateFrom<C>
         let NtruKeyswitchKeyCreationMetadata {
             polynomial_size,
             decomp_base_log,
-            decomp_level_count,
             ciphertext_modulus,
         } = meta;
         Self::from_container(
             from,
             polynomial_size,
             decomp_base_log,
-            decomp_level_count,
             ciphertext_modulus,
         )
     }
@@ -259,7 +249,6 @@ impl<Scalar: UnsignedInteger, C: Container<Element = Scalar>> ContiguousEntityCo
         NtruKeyswitchKeyCreationMetadata {
             polynomial_size: self.polynomial_size(),
             decomp_base_log: self.decomposition_base_log(),
-            decomp_level_count: self.decomposition_level_count(),
             ciphertext_modulus: self.ciphertext_modulus(),
         }
     }
