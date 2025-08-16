@@ -34,18 +34,30 @@ pub fn main() {
         &ntru_secret_key,
         decomp_base_log,
         decomp_level_count,
-        FftType::Vanilla,
         ntru_noise_distribution,
         &mut encryption_generator,
     );
 
-    let split_ntru_trace_key = allocate_and_generate_new_ntru_trace_key(
-        &ntru_secret_key,
+    let mut fourier_ntru_trace_key = FourierNtruTraceKey::new(
+        polynomial_size,
+        decomp_base_log,
+        decomp_level_count,
+        FftType::Vanilla,
+    );
+    convert_standard_ntru_trace_key_to_fourier(
+        &ntru_trace_key,
+        &mut fourier_ntru_trace_key,
+    );
+
+    let mut split_fourier_ntru_trace_key = FourierNtruTraceKey::new(
+        polynomial_size,
         decomp_base_log,
         decomp_level_count,
         FftType::Split(45),
-        ntru_noise_distribution,
-        &mut encryption_generator,
+    );
+    convert_standard_ntru_trace_key_to_fourier(
+        &ntru_trace_key,
+        &mut split_fourier_ntru_trace_key,
     );
 
     // NTRU message parameters
@@ -101,7 +113,7 @@ pub fn main() {
 
         // Vanilla FFT-based RevHomTrace
         rev_trace_ntru_ciphertext(
-            &ntru_trace_key,
+            &fourier_ntru_trace_key,
             &ntru_ciphertext,
             &mut ntru_trace_ciphertext,
         );
@@ -121,7 +133,7 @@ pub fn main() {
 
         // Split FFT-based RevHomTrace
         rev_trace_ntru_ciphertext(
-            &split_ntru_trace_key,
+            &split_fourier_ntru_trace_key,
             &ntru_ciphertext,
             &mut ntru_trace_ciphertext,
         );
