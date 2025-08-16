@@ -205,10 +205,11 @@ impl<C: Container<Element = c64>> ContiguousEntityContainer for FourierNgswCiphe
             fft_type: self.fft_type,
         }
     }
-    
+
     fn get_entity_view_pod_size(&self) -> usize {
         self.fourier.polynomial_size.to_fourier_polynomial_size().0
             * self.decomp_level_count.0
+            * self.fft_type.num_split()
     }
 
     fn get_self_view_creation_metadata(&self) -> Self::SelfViewMetadata {

@@ -106,7 +106,7 @@ impl<Scalar: UnsignedInteger, C: Container<Element = Scalar>> NtruKeyswitchKeyLi
             self.data.as_ref(),
             self.polynomial_size,
             self.decomp_base_log,
-            self.decomp_level_count, 
+            self.decomp_level_count,
             self.ciphertext_modulus,
         )
     }

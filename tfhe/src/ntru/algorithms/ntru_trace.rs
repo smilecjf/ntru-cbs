@@ -31,18 +31,6 @@ pub fn convert_standard_ntru_trace_key_to_fourier<Scalar, InputCont, OutputCont>
         fourier_ntru_trace_key.decomposition_level_count(),
     );
 
-    let standard_ntru_auto_keys = standard_ntru_trace_key.get_automorphism_keys();
-    assert!(
-        !standard_ntru_auto_keys.is_empty(),
-        "standard_ntru_trace_key does not hold automorphism keys.",
-    );
-
-    let fourier_ntru_auto_keys = fourier_ntru_trace_key.get_automorphism_keys();
-    assert!(
-        !fourier_ntru_auto_keys.is_empty(),
-        "fourier_ntru_trace_key does not hold fourier automorphism keys.",
-    );
-
     let polynomial_size = standard_ntru_trace_key.polynomial_size();
     let fft = Fft::new(polynomial_size);
     let fft = fft.as_view();
@@ -81,13 +69,9 @@ pub fn convert_standard_ntru_trace_key_to_fourier_mem_optimized<Scalar, InputCon
 {
     let polynomial_size = standard_ntru_trace_key.polynomial_size();
 
-    let standard_ntru_auto_keys = standard_ntru_trace_key.get_automorphism_keys();
-    let fourier_ntru_auto_keys = fourier_ntru_trace_key.get_mut_automorphism_keys();
-
     for k in 1..=polynomial_size.0.ilog2() {
-        let auto_index = AutomorphismIndex((1 << k) + 1);
-        let ntru_auto_key = standard_ntru_auto_keys.get(&auto_index.0).unwrap();
-        let mut fourier_ntru_auto_key = fourier_ntru_auto_keys.get_mut(&auto_index.0).unwrap();
+        let ntru_auto_key = standard_ntru_trace_key.get_automorphism_key(k as usize - 1);
+        let mut fourier_ntru_auto_key = fourier_ntru_trace_key.get_mut_automorphism_key(k as usize - 1);
 
         convert_standard_ntru_automorphism_key_to_fourier_mem_optimized(
             &ntru_auto_key,
@@ -133,8 +117,6 @@ pub fn rev_trace_ntru_ciphertext<Scalar, KeyCont, InputCont, OutputCont>(
     let polynomial_size = input_ntru_ciphertext.polynomial_size();
     let ciphertext_modulus = input_ntru_ciphertext.ciphertext_modulus();
 
-    let ntru_auto_keys = ntru_trace_key.get_automorphism_keys();
-
     let mut buf = NtruCiphertext::new(
         Scalar::ZERO,
         polynomial_size,
@@ -144,13 +126,12 @@ pub fn rev_trace_ntru_ciphertext<Scalar, KeyCont, InputCont, OutputCont>(
         .clone_from_slice(input_ntru_ciphertext.as_ref());
 
     for k in 1..=polynomial_size.0.ilog2() {
-        let auto_index = AutomorphismIndex((1 << k) + 1);
-        let fourier_ntru_auto_key = ntru_auto_keys.get(&auto_index.0).unwrap();
+        let fourier_ntru_auto_key = ntru_trace_key.get_automorphism_key(k as usize - 1);
 
         slice_wrapping_scalar_div_assign(output_ntru_ciphertext.as_mut(), Scalar::TWO);
 
         automorphism_ntru_ciphertext(
-            fourier_ntru_auto_key,
+            &fourier_ntru_auto_key,
             &output_ntru_ciphertext,
             &mut buf,
         );

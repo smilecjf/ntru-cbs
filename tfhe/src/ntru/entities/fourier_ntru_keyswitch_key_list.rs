@@ -83,7 +83,7 @@ impl<C: Container<Element = c64>> FourierNtruKeyswitchKeyList<C> {
         self.decomp_level_count
     }
 
-    pub fn ciphertext_count(&self) -> FourierNtruKeyswitchKeyCount {
+    pub fn fourier_ntru_keyswitch_key_count(&self) -> FourierNtruKeyswitchKeyCount {
         FourierNtruKeyswitchKeyCount(
             self.fourier.data.container_len() / (
                 self.fourier.polynomial_size
@@ -228,10 +228,11 @@ impl<C: Container<Element = c64>> ContiguousEntityContainer for FourierNtruKeysw
             fft_type: self.fft_type,
         }
     }
-    
+
     fn get_entity_view_pod_size(&self) -> usize {
         self.fourier.polynomial_size.to_fourier_polynomial_size().0
             * self.decomp_level_count.0
+            * self.fft_type.num_split()
     }
 
     fn get_self_view_creation_metadata(&self) -> Self::SelfViewMetadata {

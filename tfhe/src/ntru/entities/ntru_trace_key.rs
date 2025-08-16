@@ -4,14 +4,11 @@ use crate::core_crypto::commons::traits::*;
 use crate::core_crypto::commons::parameters::*;
 use crate::ntru::entities::*;
 
-use std::collections::HashMap;
-
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NtruTraceKey<C: Container>
     where C::Element: UnsignedInteger,
 {
-    ntru_auto_keys: HashMap<usize, NtruAutomorphismKey<C>>,
+    ntru_auto_keys: NtruKeyswitchKeyList<C>,
     polynomial_size: PolynomialSize,
     decomp_base_log: DecompositionBaseLog,
     decomp_level_count: DecompositionLevelCount,
@@ -21,8 +18,28 @@ pub struct NtruTraceKey<C: Container>
 pub type NtruTraceKeyOwned<Scalar> = NtruTraceKey<Vec<Scalar>>;
 
 impl<Scalar: UnsignedInteger, C: Container<Element = Scalar>> NtruTraceKey<C> {
-    pub fn get_automorphism_keys(&self) -> &HashMap<usize, NtruAutomorphismKey<C>> {
-        &self.ntru_auto_keys
+    pub fn get_automorphism_key(&self, index: usize) -> NtruAutomorphismKeyView<Scalar> {
+        let automorphism_key_count = self.automorphism_key_count().0;
+        assert!(
+            index < automorphism_key_count,
+            "Input index {} should be smaller than the number of automorphism keys {}",
+            index,
+            automorphism_key_count,
+        );
+
+        let ntru_auto_key = self.ntru_auto_keys.get(index);
+        let auto_index = AutomorphismIndex((1 << (index + 1)) + 1);
+        NtruAutomorphismKey::from_container(
+            ntru_auto_key.into_container(),
+            auto_index,
+            self.polynomial_size,
+            self.decomp_base_log,
+            self.ciphertext_modulus,
+        )
+    }
+
+    pub fn automorphism_key_count(&self) -> NtruKeyswitchKeyCount {
+        self.ntru_auto_keys.ntru_keyswitch_key_count()
     }
 
     pub fn polynomial_size(&self) -> PolynomialSize {
@@ -43,8 +60,24 @@ impl<Scalar: UnsignedInteger, C: Container<Element = Scalar>> NtruTraceKey<C> {
 }
 
 impl<Scalar: UnsignedInteger, C: ContainerMut<Element = Scalar>> NtruTraceKey<C> {
-    pub fn get_mut_automorphism_keys(&mut self) -> &mut HashMap<usize, NtruAutomorphismKey<C>> {
-        &mut self.ntru_auto_keys
+    pub fn get_mut_automorphism_key(&mut self, index: usize) -> NtruAutomorphismKeyMutView<Scalar> {
+        let automorphism_key_count = self.automorphism_key_count().0;
+        assert!(
+            index < automorphism_key_count,
+            "Input index {} should be smaller than the number of automorphism keys {}",
+            index,
+            automorphism_key_count,
+        );
+
+        let ntru_auto_key = self.ntru_auto_keys.get_mut(index);
+        let auto_index = AutomorphismIndex((1 << (index + 1)) + 1);
+        NtruAutomorphismKey::from_container(
+            ntru_auto_key.into_container(),
+            auto_index,
+            self.polynomial_size,
+            self.decomp_base_log,
+            self.ciphertext_modulus,
+        )
     }
 }
 
@@ -55,19 +88,14 @@ impl<Scalar: UnsignedInteger> NtruTraceKeyOwned<Scalar> {
         decomp_level_count: DecompositionLevelCount,
         ciphertext_modulus: CiphertextModulus<Scalar>,
     ) -> Self {
-        let mut ntru_auto_keys = HashMap::new();
-        for k in 1..=polynomial_size.0.ilog2() {
-            let auto_index = AutomorphismIndex((1 << k) + 1);
-            let ntru_auto_key = NtruAutomorphismKey::new(
-                Scalar::ZERO,
-                auto_index,
-                polynomial_size,
-                decomp_base_log,
-                decomp_level_count,
-                ciphertext_modulus,
-            );
-            ntru_auto_keys.insert(auto_index.0, ntru_auto_key);
-        }
+        let ntru_auto_keys = NtruKeyswitchKeyList::new(
+            Scalar::ZERO,
+            polynomial_size,
+            decomp_base_log,
+            decomp_level_count,
+            NtruKeyswitchKeyCount(polynomial_size.0.ilog2() as usize),
+            ciphertext_modulus,
+        );
 
         Self {
             ntru_auto_keys,

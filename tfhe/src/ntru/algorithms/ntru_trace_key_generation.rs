@@ -34,17 +34,11 @@ pub fn generate_ntru_trace_key<
     );
 
     let polynomial_size = input_ntru_secret_key.polynomial_size();
-    let ntru_auto_keys = output_ntru_trace_key.get_mut_automorphism_keys();
-
-    assert!(
-        !ntru_auto_keys.is_empty(),
-        "output_ntru_trace_key does not hold automorphism keys.",
-    );
-
 
     for k in 1..=polynomial_size.0.ilog2() {
         let auto_index = AutomorphismIndex((1 << k) + 1);
-        let mut ntru_auto_key = ntru_auto_keys.get_mut(&auto_index.0).unwrap();
+        let mut ntru_auto_key = output_ntru_trace_key.get_mut_automorphism_key(k as usize - 1);
+
         generate_ntru_automorphism_key(
             input_ntru_secret_key,
             auto_index,
