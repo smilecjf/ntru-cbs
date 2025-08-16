@@ -344,6 +344,16 @@ name = "ntru_switching_mod_power_of_two"
 path = "tests/ntru/ntru_switching_mod_power_of_two.rs"
 harness = false
 
+[[test]]
+name = "ntru_rev_trace_native_mod"
+path = "tests/ntru/ntru_rev_trace_native_mod.rs"
+harness = false
+
+[[test]]
+name = "ntru_rev_trace_mod_power_of_two"
+path = "tests/ntru/ntru_rev_trace_mod_power_of_two.rs"
+harness = false
+
 [lib]
 crate-type = ["lib", "staticlib", "cdylib"]
 

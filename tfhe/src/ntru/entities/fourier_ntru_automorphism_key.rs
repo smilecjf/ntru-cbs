@@ -150,7 +150,7 @@ impl<C: Container<Element = c64>> FourierNtruAutomorphismKey<C> {
     }
 }
 
-type FourierNtruAutomorphismKeyOwned = FourierNtruAutomorphismKey<ABox<[c64]>>;
+pub(crate) type FourierNtruAutomorphismKeyOwned = FourierNtruAutomorphismKey<ABox<[c64]>>;
 
 impl FourierNtruAutomorphismKeyOwned {
     pub fn new(
