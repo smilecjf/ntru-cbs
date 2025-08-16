@@ -176,3 +176,32 @@ impl FourierNtruAutomorphismKeyOwned {
         )
     }
 }
+
+#[derive(Clone, Copy)]
+pub struct FourierNtruAutomorphismKeyCreationMetadata {
+    pub polynomial_size: PolynomialSize,
+    pub automorphism_index: AutomorphismIndex,
+    pub decomp_base_log: DecompositionBaseLog,
+    pub fft_type: FftType,
+}
+
+impl<C: Container<Element = c64>> CreateFrom<C> for FourierNtruAutomorphismKey<C> {
+    type Metadata = FourierNtruAutomorphismKeyCreationMetadata;
+
+    #[inline]
+    fn create_from(from: C, meta: Self::Metadata) -> Self {
+        let FourierNtruAutomorphismKeyCreationMetadata {
+            polynomial_size,
+            automorphism_index,
+            decomp_base_log,
+            fft_type,
+        } = meta;
+        Self::from_container(
+            from,
+            automorphism_index,
+            polynomial_size,
+            decomp_base_log,
+            fft_type,
+        )
+    }
+}

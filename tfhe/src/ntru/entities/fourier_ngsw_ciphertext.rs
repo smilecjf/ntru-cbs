@@ -37,22 +37,22 @@ impl FftType {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FourierNgswCiphertext<C: Container<Element = c64>> {
     fourier: FourierPolynomialList<C>,
-    decomposition_base_log: DecompositionBaseLog,
+    decomp_base_log: DecompositionBaseLog,
     fft_type: FftType,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FourierNgswSplitBlock<C: Container<Element = c64>> {
     fourier: FourierPolynomialList<C>,
-    decomposition_base_log: DecompositionBaseLog,
-    decomposition_level_count: DecompositionLevelCount,
+    decomp_base_log: DecompositionBaseLog,
+    decomp_level_count: DecompositionLevelCount,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FourierNgswLevelPoly<C: Container<Element = c64>> {
     data: C,
     polynomial_size: PolynomialSize,
-    decomposition_level: DecompositionLevel,
+    decomp_level: DecompositionLevel,
 }
 
 pub type FourierNgswCiphertextView<'a> = FourierNgswCiphertext<&'a [c64]>;
@@ -66,7 +66,7 @@ impl<C: Container<Element = c64>> FourierNgswCiphertext<C> {
     pub fn from_container(
         data: C,
         polynomial_size: PolynomialSize,
-        decomposition_base_log: DecompositionBaseLog,
+        decomp_base_log: DecompositionBaseLog,
         fft_type: FftType,
     ) -> Self {
         assert!(
@@ -87,7 +87,7 @@ impl<C: Container<Element = c64>> FourierNgswCiphertext<C> {
                 data,
                 polynomial_size,
             },
-            decomposition_base_log,
+            decomp_base_log,
             fft_type,
         }
     }
@@ -97,7 +97,7 @@ impl<C: Container<Element = c64>> FourierNgswCiphertext<C> {
     }
 
     pub fn decomposition_base_log(&self) -> DecompositionBaseLog {
-        self.decomposition_base_log
+        self.decomp_base_log
     }
 
     pub fn decomposition_level_count(&self) -> DecompositionLevelCount {
@@ -127,7 +127,7 @@ impl<C: Container<Element = c64>> FourierNgswCiphertext<C> {
                 data: self.fourier.data.as_ref(),
                 polynomial_size: self.fourier.polynomial_size,
             },
-            decomposition_base_log: self.decomposition_base_log,
+            decomp_base_log: self.decomp_base_log,
             fft_type: self.fft_type,
         }
     }
@@ -141,7 +141,7 @@ impl<C: Container<Element = c64>> FourierNgswCiphertext<C> {
                 data: self.fourier.data.as_mut(),
                 polynomial_size: self.fourier.polynomial_size,
             },
-            decomposition_base_log: self.decomposition_base_log,
+            decomp_base_log: self.decomp_base_log,
             fft_type: self.fft_type,
         }
     }
@@ -151,13 +151,13 @@ impl<C: Container<Element = c64>> FourierNgswSplitBlock<C> {
     pub fn from_container(
         data: C,
         polynomial_size: PolynomialSize,
-        decomposition_base_log: DecompositionBaseLog,
-        decomposition_level_count: DecompositionLevelCount,
+        decomp_base_log: DecompositionBaseLog,
+        decomp_level_count: DecompositionLevelCount,
     ) -> Self {
         assert_eq!(
             data.container_len(),
             polynomial_size.to_fourier_polynomial_size().0
-                * decomposition_level_count.0
+                * decomp_level_count.0
         );
 
         Self {
@@ -165,8 +165,8 @@ impl<C: Container<Element = c64>> FourierNgswSplitBlock<C> {
                 data,
                 polynomial_size,
             },
-            decomposition_base_log,
-            decomposition_level_count,
+            decomp_base_log,
+            decomp_level_count,
         }
     }
 
@@ -175,11 +175,11 @@ impl<C: Container<Element = c64>> FourierNgswSplitBlock<C> {
     }
 
     pub fn decomposition_base_log(&self) -> DecompositionBaseLog {
-        self.decomposition_base_log
+        self.decomp_base_log
     }
 
     pub fn decomposition_level_count(&self) -> DecompositionLevelCount {
-        self.decomposition_level_count
+        self.decomp_level_count
     }
 
     pub fn data(self) -> C {
@@ -195,8 +195,8 @@ impl<C: Container<Element = c64>> FourierNgswSplitBlock<C> {
                 data: self.fourier.data.as_ref(),
                 polynomial_size: self.fourier.polynomial_size,
             },
-            decomposition_base_log: self.decomposition_base_log,
-            decomposition_level_count: self.decomposition_level_count,
+            decomp_base_log: self.decomp_base_log,
+            decomp_level_count: self.decomp_level_count,
         }
     }
 
@@ -209,8 +209,8 @@ impl<C: Container<Element = c64>> FourierNgswSplitBlock<C> {
                 data: self.fourier.data.as_mut(),
                 polynomial_size: self.fourier.polynomial_size,
             },
-            decomposition_base_log: self.decomposition_base_log,
-            decomposition_level_count: self.decomposition_level_count,
+            decomp_base_log: self.decomp_base_log,
+            decomp_level_count: self.decomp_level_count,
         }
     }
 }
@@ -219,7 +219,7 @@ impl<C: Container<Element = c64>> FourierNgswLevelPoly<C> {
     pub fn from_container(
         data: C,
         polynomial_size: PolynomialSize,
-        decomposition_level: DecompositionLevel,
+        decomp_level: DecompositionLevel,
     ) -> Self {
         assert_eq!(
             data.container_len(), polynomial_size.to_fourier_polynomial_size().0
@@ -227,7 +227,7 @@ impl<C: Container<Element = c64>> FourierNgswLevelPoly<C> {
         Self {
             data,
             polynomial_size,
-            decomposition_level,
+            decomp_level,
         }
     }
 
@@ -236,7 +236,7 @@ impl<C: Container<Element = c64>> FourierNgswLevelPoly<C> {
     }
 
     pub fn decomposition_level(&self) -> DecompositionLevel {
-        self.decomposition_level
+        self.decomp_level
     }
 
     pub fn data(self) -> C {
@@ -253,7 +253,7 @@ impl<'a> FourierNgswCiphertextView<'a> {
                 FourierNgswSplitBlockView::from_container(
                     slice,
                     self.fourier.polynomial_size,
-                    self.decomposition_base_log,
+                    self.decomp_base_log,
                     self.decomposition_level_count(),
                 )
             })
@@ -262,16 +262,16 @@ impl<'a> FourierNgswCiphertextView<'a> {
 
 impl<'a> FourierNgswSplitBlockView<'a> {
     pub fn into_levels(self) -> impl DoubleEndedIterator<Item = FourierNgswLevelPolyView<'a>> {
-        let decomposition_level_count = self.decomposition_level_count.0;
+        let decomp_level_count = self.decomp_level_count.0;
         self.fourier
             .data
-            .split_into(decomposition_level_count)
+            .split_into(decomp_level_count)
             .enumerate()
             .map(move |(i, slice)| {
                 FourierNgswLevelPolyView::from_container(
                     slice,
                     self.fourier.polynomial_size,
-                    DecompositionLevel(decomposition_level_count - i),
+                    DecompositionLevel(decomp_level_count - i),
                 )
             })
     }
@@ -336,14 +336,14 @@ type FourierNgswCiphertextOwned = FourierNgswCiphertext<ABox<[c64]>>;
 impl FourierNgswCiphertextOwned {
     pub fn new (
         polynomial_size: PolynomialSize,
-        decomposition_base_log: DecompositionBaseLog,
-        decomposition_level_count: DecompositionLevelCount,
+        decomp_base_log: DecompositionBaseLog,
+        decomp_level_count: DecompositionLevelCount,
         fft_type: FftType,
     ) -> Self {
         let boxed = avec![
             c64::default();
             polynomial_size.to_fourier_polynomial_size().0
-                * decomposition_level_count.0
+                * decomp_level_count.0
                 * fft_type.num_split()
         ]
         .into_boxed_slice();
@@ -351,7 +351,7 @@ impl FourierNgswCiphertextOwned {
         FourierNgswCiphertext::from_container(
             boxed,
             polynomial_size,
-            decomposition_base_log,
+            decomp_base_log,
             fft_type,
         )
     }
@@ -360,7 +360,7 @@ impl FourierNgswCiphertextOwned {
 #[derive(Clone, Copy)]
 pub struct FourierNgswCiphertextCreationMetadata {
     pub polynomial_size: PolynomialSize,
-    pub decomposition_base_log: DecompositionBaseLog,
+    pub decomp_base_log: DecompositionBaseLog,
     pub fft_type: FftType,
 }
 
@@ -371,13 +371,13 @@ impl<C: Container<Element = c64>> CreateFrom<C> for FourierNgswCiphertext<C> {
     fn create_from(from: C, meta: Self::Metadata) -> Self {
         let FourierNgswCiphertextCreationMetadata {
             polynomial_size,
-            decomposition_base_log,
+            decomp_base_log,
             fft_type,
         } = meta;
         Self::from_container(
             from,
             polynomial_size,
-            decomposition_base_log,
+            decomp_base_log,
             fft_type,
         )
     }

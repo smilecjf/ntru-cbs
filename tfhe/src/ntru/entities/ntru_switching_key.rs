@@ -187,3 +187,29 @@ impl<Scalar: UnsignedInteger> NtruSwitchingKeyOwned<Scalar> {
         )
     }
 }
+
+#[derive(Clone, Copy)]
+pub struct NtruSwitchingKeyCreationMetadata<Scalar: UnsignedInteger> {
+    pub polynomial_size: PolynomialSize,
+    pub decomp_base_log: DecompositionBaseLog,
+    pub ciphertext_modulus: CiphertextModulus<Scalar>,
+}
+
+impl<Scalar: UnsignedInteger, C: Container<Element = Scalar>> CreateFrom<C> for NtruSwitchingKey<C> {
+    type Metadata = NtruSwitchingKeyCreationMetadata<Scalar>;
+
+    #[inline]
+    fn create_from(from: C, meta: Self::Metadata) -> Self {
+        let NtruSwitchingKeyCreationMetadata {
+            polynomial_size,
+            decomp_base_log,
+            ciphertext_modulus,
+        } = meta;
+        Self::from_container(
+            from,
+            polynomial_size,
+            decomp_base_log,
+            ciphertext_modulus,
+        )
+    }
+}

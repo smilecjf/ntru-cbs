@@ -156,3 +156,29 @@ impl FourierNtruSwitchingKeyOwned {
         )
     }
 }
+
+#[derive(Clone, Copy)]
+pub struct FourierNtruSwitchingKeyCreationMetadata {
+    pub polynomial_size: PolynomialSize,
+    pub decomp_base_log: DecompositionBaseLog,
+    pub fft_type: FftType,
+}
+
+impl<C: Container<Element = c64>> CreateFrom<C> for FourierNtruSwitchingKey<C> {
+    type Metadata = FourierNtruSwitchingKeyCreationMetadata;
+
+    #[inline]
+    fn create_from(from: C, meta: Self::Metadata) -> Self {
+        let FourierNtruSwitchingKeyCreationMetadata {
+            polynomial_size,
+            decomp_base_log,
+            fft_type,
+        } = meta;
+        Self::from_container(
+            from,
+            polynomial_size,
+            decomp_base_log,
+            fft_type,
+        )
+    }
+}

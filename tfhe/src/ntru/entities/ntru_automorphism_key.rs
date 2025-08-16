@@ -219,3 +219,32 @@ impl<Scalar: UnsignedInteger> NtruAutomorphismKeyOwned<Scalar> {
         )
     }
 }
+
+#[derive(Clone, Copy)]
+pub struct NtruAutomorphismKeyCreationMetadata<Scalar: UnsignedInteger> {
+    pub polynomial_size: PolynomialSize,
+    pub automorphism_index: AutomorphismIndex,
+    pub decomp_base_log: DecompositionBaseLog,
+    pub ciphertext_modulus: CiphertextModulus<Scalar>,
+}
+
+impl<Scalar: UnsignedInteger, C: Container<Element = Scalar>> CreateFrom<C> for NtruAutomorphismKey<C> {
+    type Metadata = NtruAutomorphismKeyCreationMetadata<Scalar>;
+
+    #[inline]
+    fn create_from(from: C, meta: Self::Metadata) -> Self {
+        let NtruAutomorphismKeyCreationMetadata {
+            polynomial_size,
+            automorphism_index,
+            decomp_base_log,
+            ciphertext_modulus,
+        } = meta;
+        Self::from_container(
+            from,
+            automorphism_index,
+            polynomial_size,
+            decomp_base_log,
+            ciphertext_modulus,
+        )
+    }
+}
