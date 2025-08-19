@@ -358,6 +358,26 @@ harness = false
 name = "automorphism_group"
 path = "tests/ntru/automorphism_group.rs"
 
+[[test]]
+name = "ntru_cmux_bootstrap"
+path = "tests/ntru/ntru_cmux_bootstrap.rs"
+harness = false
+
+[[bench]]
+name = "ntru_external_product"
+path = "benches/ntru/ntru_external_product.rs"
+harness = false
+
+[[bench]]
+name = "ntru_cmux_bootstrap"
+path = "benches/ntru/ntru_cmux_bootstrap.rs"
+harness = false
+
+[[bench]]
+name = "ntru_rev_trace"
+path = "benches/ntru/ntru_rev_trace.rs"
+harness = false
+
 [lib]
 crate-type = ["lib", "staticlib", "cdylib"]
 

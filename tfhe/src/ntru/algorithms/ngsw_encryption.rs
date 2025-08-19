@@ -41,7 +41,6 @@ pub fn encrypt_constant_ngsw_ciphertext<Scalar, NoiseDistribution, KeyCont, Outp
     generator: &mut EncryptionRandomGenerator<Gen>,
 ) where
     Scalar: Encryptable<Uniform, NoiseDistribution>,
-    Scalar: std::fmt::Display + CastInto<f64>,
     NoiseDistribution: Distribution,
     KeyCont: Container<Element = Scalar>,
     OutputCont: ContainerMut<Element = Scalar>,

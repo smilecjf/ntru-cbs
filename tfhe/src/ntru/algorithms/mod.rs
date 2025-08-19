@@ -14,6 +14,8 @@ pub mod ntru_automorphism_key_generation;
 pub mod ntru_automorphism;
 pub mod ntru_trace_key_generation;
 pub mod ntru_trace;
+pub mod ntru_cmux_bootstrap_key_generation;
+pub mod ntru_cmux_bootstrap;
 
 pub use polynomial_for_ntru::*;
 pub use ntru_secret_key_generation::*;
@@ -31,3 +33,5 @@ pub use ntru_automorphism_key_generation::*;
 pub use ntru_automorphism::*;
 pub use ntru_trace_key_generation::*;
 pub use ntru_trace::*;
+pub use ntru_cmux_bootstrap_key_generation::*;
+pub use ntru_cmux_bootstrap::*;
