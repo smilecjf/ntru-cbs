@@ -354,6 +354,10 @@ name = "ntru_rev_trace_mod_power_of_two"
 path = "tests/ntru/ntru_rev_trace_mod_power_of_two.rs"
 harness = false
 
+[[test]]
+name = "automorphism_group"
+path = "tests/ntru/automorphism_group.rs"
+
 [lib]
 crate-type = ["lib", "staticlib", "cdylib"]
 
