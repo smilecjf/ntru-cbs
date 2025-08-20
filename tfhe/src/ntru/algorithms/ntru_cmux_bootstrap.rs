@@ -179,7 +179,6 @@ pub fn ntru_cmux_bootstrap_mem_optimized<InputScalar, OutputScalar, KeyCont, Inp
     AccCont: Container<Element = OutputScalar>,
 {
     let polynomial_size = PolynomialSize(accumulator.plaintext_count().0);
-    // let (local_accumulator_data, stack) = stack.collect_aligned(CACHELINE_ALIGN, acc.as_ref().iter().copied());
     let (local_accumulator_data, stack) = stack.make_aligned_raw::<OutputScalar>(polynomial_size.0, CACHELINE_ALIGN);
     let mut local_accumulator = NtruCiphertextMutView::from_container(
         &mut *local_accumulator_data,
@@ -250,7 +249,7 @@ pub fn ntru_cmux_blind_rotate_assign<OutputScalar: UnsignedTorus>(
                 let ct0_poly = ct0.as_polynomial();
                 polynomial_wrapping_monic_monomial_mul_and_subtract(
                     &mut ct1_poly,
-                    &ct0_poly, 
+                    &ct0_poly,
                     monomial_degree,
                 );
 
@@ -263,7 +262,7 @@ pub fn ntru_cmux_blind_rotate_assign<OutputScalar: UnsignedTorus>(
                 );
             }
         }
-    
+
     if !ciphertext_modulus.is_native_modulus() {
         let signed_decomposer = SignedDecomposer::new(
             DecompositionBaseLog(ciphertext_modulus.get_custom_modulus().ilog2() as usize),
@@ -272,5 +271,109 @@ pub fn ntru_cmux_blind_rotate_assign<OutputScalar: UnsignedTorus>(
         ct0.as_mut()
             .iter_mut()
             .for_each(|x| *x = signed_decomposer.closest_representable(*x));
+    }
+}
+
+pub fn ntru_cmux_bootstrap_lwe_ciphertext_lut_many<
+    InputScalar: UnsignedTorus + CastInto<usize>,
+    OutputScalar: UnsignedTorus,
+    InputCont: Container<Element = InputScalar>,
+    OutputCont: ContainerMut<Element = OutputScalar>,
+    AccCont: Container<Element = OutputScalar>,
+    KeyCont: Container<Element = c64>,
+>(
+    input: &LweCiphertext<InputCont>,
+    output: &mut LweCiphertextList<OutputCont>,
+    accumulator: &PlaintextList<AccCont>,
+    log_lut_count: LutCountLog,
+    fourier_bsk: &FourierNtruCMuxBootstrapKey<KeyCont>,
+) {
+    assert!(
+        input.ciphertext_modulus().is_power_of_two(),
+        "This operation requires the input to have a power of two modulus."
+    );
+    assert_eq!(
+        output.lwe_size().to_lwe_dimension().0,
+        accumulator.plaintext_count().0,
+    );
+    assert!(
+        output.lwe_ciphertext_count().0 <= (1 << log_lut_count.0),
+        "The number of output lwe ciphertexts cannot exceed 2^log_lut_count.",
+    );
+
+    let mut buffers = ComputationBuffers::new();
+
+    let fft = Fft::new(fourier_bsk.polynomial_size());
+    let fft = fft.as_view();
+
+    buffers.resize(
+        ntru_cmux_bootstrap_scratch::<OutputScalar>(
+            PolynomialSize(accumulator.plaintext_count().0),
+            fft,
+        )
+        .unwrap()
+        .unaligned_bytes_required(),
+    );
+
+    let stack = buffers.stack();
+
+    ntru_cmux_bootstrap_lut_many_mem_optimized(
+        fourier_bsk,
+        input,
+        output,
+        accumulator,
+        log_lut_count,
+        fft,
+        stack,
+    );
+}
+
+pub fn ntru_cmux_bootstrap_lut_many_mem_optimized<InputScalar, OutputScalar, KeyCont, InputCont, OutputCont, AccCont>(
+    bsk: &FourierNtruCMuxBootstrapKey<KeyCont>,
+    lwe_in: &LweCiphertext<InputCont>,
+    lwe_out_list: &mut LweCiphertextList<OutputCont>,
+    accumulator: &PlaintextList<AccCont>,
+    log_lut_count: LutCountLog,
+    fft: FftView<'_>,
+    stack: &mut PodStack,
+) where
+    KeyCont: Container<Element = c64>,
+    InputScalar: UnsignedTorus + CastInto<usize>,
+    InputCont: Container<Element = InputScalar>,
+    OutputScalar: UnsignedTorus,
+    OutputCont: ContainerMut<Element = OutputScalar>,
+    AccCont: Container<Element = OutputScalar>,
+{
+    let polynomial_size = PolynomialSize(accumulator.plaintext_count().0);
+    let (local_accumulator_data, stack) = stack.make_aligned_raw::<OutputScalar>(polynomial_size.0, CACHELINE_ALIGN);
+    let mut local_accumulator = NtruCiphertextMutView::from_container(
+        &mut *local_accumulator_data,
+        polynomial_size,
+        lwe_out_list.ciphertext_modulus(),
+    );
+    switch_to_ntru_ciphertext(
+        &bsk.get_fourier_ntru_switching_key(),
+        &accumulator,
+        &mut local_accumulator,
+    );
+
+    let log_modulus = polynomial_size.to_blind_rotation_input_modulus_log();
+
+    let msed = lwe_ciphertext_modulus_switch_lut_many(lwe_in.as_view(), log_modulus, log_lut_count);
+
+    ntru_cmux_blind_rotate_assign(
+        bsk.as_view(),
+        local_accumulator.as_mut_view(),
+        &msed,
+        fft,
+        stack,
+    );
+
+    for (k, mut lwe_out) in lwe_out_list.iter_mut().enumerate() {
+        extract_lwe_sample_from_ntru_ciphertext(
+            &local_accumulator,
+            &mut lwe_out,
+            MonomialDegree(k),
+        );
     }
 }

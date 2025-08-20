@@ -7,13 +7,14 @@ use std::time::{Instant, Duration};
 type Scalar = u64;
 type SmallScalar = u32;
 
-pub fn test_ntru_cmux_boot(
+pub fn test_ntru_cmux_boot_lut_many(
     power: usize,
     std_dev: f64,
     br_decomp_base_log: DecompositionBaseLog,
     br_decomp_level_count: DecompositionLevelCount,
     swk_decomp_base_log: DecompositionBaseLog,
     swk_decomp_level_count: DecompositionLevelCount,
+    log_lut_count: LutCountLog,
 ) {
     let ciphertext_modulus = CiphertextModulus::<Scalar>::try_new_power_of_2(power).unwrap();
 
@@ -75,20 +76,24 @@ pub fn test_ntru_cmux_boot(
     let delta = Scalar::ONE << (power - 1 - log_message_modulus);
     let small_delta = SmallScalar::ONE << (small_power - 1 - log_message_modulus);
 
-    let mut lwe_out = LweCiphertext::new(
+    let lut_count = 1 << log_lut_count.0;
+    let mut lwe_out_list = LweCiphertextList::new(
         Scalar::ZERO,
         ntru_cmux_bsk.output_lwe_dimension().to_lwe_size(),
+        LweCiphertextCount(lut_count),
         ciphertext_modulus,
     );
 
     let mut acc = PlaintextList::new(Scalar::ZERO, PlaintextCount(polynomial_size.0));
     {
         let box_size = polynomial_size.0 / message_modulus;
-        for i in 0..message_modulus {
-            let index = i * box_size;
-            acc.as_mut()[index..index + box_size]
-                .iter_mut()
-                .for_each(|a| *a = Scalar::cast_from(i).wrapping_mul(delta));
+        for x in 0..message_modulus {
+            let index = x * box_size;
+            for (i, elem) in acc.as_mut()[index..index + box_size].iter_mut().enumerate() {
+                let k = i % lut_count;
+                let scale = delta >> k;
+                *elem = Scalar::cast_from(x).wrapping_mul(scale);
+            }
         }
 
         let half_box_size = box_size / 2;
@@ -115,50 +120,54 @@ pub fn test_ntru_cmux_boot(
 
         let mut time = Duration::ZERO;
         let now = Instant::now();
-        ntru_cmux_bootstrap_lwe_ciphertext(
+        ntru_cmux_bootstrap_lwe_ciphertext_lut_many(
             &lwe_in,
-            &mut lwe_out,
+            &mut lwe_out_list,
             &acc,
+            log_lut_count,
             &fourier_ntru_cmux_bsk,
         );
         time += now.elapsed();
 
         let torus_scaling = ciphertext_modulus.get_power_of_two_scaling_to_native_torus();
 
-        let scaled_decrypted = decrypt_lwe_ciphertext(
-            &large_lwe_secret_key,
-            &lwe_out
-        ).0.wrapping_mul(torus_scaling);
+        println!("[Test {idx}] input: {input_message}, time: {} ms", (time.as_micros() as f64) / 1000_f64);
+        for (i, lwe_out) in lwe_out_list.iter().enumerate() {
+            let scale = delta >> i;
+            let scaled_decrypted = decrypt_lwe_ciphertext(
+                &large_lwe_secret_key,
+                &lwe_out
+            ).0.wrapping_mul(torus_scaling);
 
-        let decoded = {
-            let rounding = (scaled_decrypted & (delta.wrapping_mul(torus_scaling) >> 1)) << 1;
-            scaled_decrypted.wrapping_add(rounding) / delta.wrapping_mul(torus_scaling)
-        };
-        let err = {
-            let correct_val = (input_message as Scalar)
-                .wrapping_mul(delta)
-                .wrapping_mul(torus_scaling);
-            let d0 = scaled_decrypted.wrapping_sub(correct_val);
-            let d1 = correct_val.wrapping_sub(scaled_decrypted);
-            std::cmp::min(d0, d1).wrapping_div(torus_scaling)
-        };
-        println!("[Test {idx}] input: {}, output: {}, time: {} ms, err: {:.3} bits",
-            input_message,
-            decoded,
-            (time.as_micros() as f64) / 1000_f64,
-            (err as f64).log2(),
-        );
+            let decoded = {
+                let rounding = (scaled_decrypted & (scale.wrapping_mul(torus_scaling) >> 1)) << 1;
+                scaled_decrypted.wrapping_add(rounding) / scale.wrapping_mul(torus_scaling)
+            };
+            let err = {
+                let correct_val = (input_message as Scalar)
+                    .wrapping_mul(scale)
+                    .wrapping_mul(torus_scaling);
+                let d0 = scaled_decrypted.wrapping_sub(correct_val);
+                let d1 = correct_val.wrapping_sub(scaled_decrypted);
+                std::cmp::min(d0, d1).wrapping_div(torus_scaling)
+            };
+
+            println!(
+                "\t[{i}] output: {decoded}, err: {:.3} bits",
+                (err as f64).log2(),
+            );
+        }
     }
 }
 
 pub fn main() {
     println!("========= STD128B2' ========");
-    test_ntru_cmux_boot(39, 2.96, DecompositionBaseLog(12), DecompositionLevelCount(2), DecompositionBaseLog(12), DecompositionLevelCount(2));
+    test_ntru_cmux_boot_lut_many(39, 2.96, DecompositionBaseLog(12), DecompositionLevelCount(2), DecompositionBaseLog(12), DecompositionLevelCount(2), LutCountLog(2));
 
     println!("\n======== STD128B2 ========");
-    test_ntru_cmux_boot(45, 23.0, DecompositionBaseLog(13), DecompositionLevelCount(2), DecompositionBaseLog(13), DecompositionLevelCount(2));
+    test_ntru_cmux_boot_lut_many(45, 23.0, DecompositionBaseLog(13), DecompositionLevelCount(2), DecompositionBaseLog(13), DecompositionLevelCount(2), LutCountLog(2));
 
     println!("\n======== STD128B3 ========");
-    test_ntru_cmux_boot(45, 23.0, DecompositionBaseLog(10), DecompositionLevelCount(3), DecompositionBaseLog(10), DecompositionLevelCount(3));
+    test_ntru_cmux_boot_lut_many(45, 23.0, DecompositionBaseLog(10), DecompositionLevelCount(3), DecompositionBaseLog(10), DecompositionLevelCount(3), LutCountLog(2));
 
 }

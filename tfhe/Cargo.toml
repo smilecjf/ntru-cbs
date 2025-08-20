@@ -368,6 +368,11 @@ name = "ntru_cmux_bootstrap_mod_power_of_two"
 path = "tests/ntru/ntru_cmux_bootstrap_mod_power_of_two.rs"
 harness = false
 
+[[test]]
+name = "ntru_cmux_bootstrap_lut_many_mod_power_of_two"
+path = "tests/ntru/ntru_cmux_bootstrap_lut_many_mod_power_of_two.rs"
+harness = false
+
 [[bench]]
 name = "ntru_external_product"
 path = "benches/ntru/ntru_external_product.rs"

@@ -17,6 +17,7 @@ pub mod ntru_trace_key;
 pub mod fourier_ntru_trace_key;
 pub mod ntru_cmux_bootstrap_key;
 pub mod fourier_ntru_cmux_bootstrap_key;
+pub mod modulus_switched_lwe_ciphertext_many_lut;
 pub mod automorphism_group;
 
 pub use ntru_secret_key::*;
@@ -38,4 +39,5 @@ pub use ntru_trace_key::*;
 pub use fourier_ntru_trace_key::*;
 pub use ntru_cmux_bootstrap_key::*;
 pub use fourier_ntru_cmux_bootstrap_key::*;
+pub use modulus_switched_lwe_ciphertext_many_lut::*;
 pub use automorphism_group::*;
