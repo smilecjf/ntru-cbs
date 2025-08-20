@@ -9,7 +9,7 @@ mod utils;
 use utils::*;
 
 pub fn main() {
-    let power = 62;
+    let power = 39;
     let ciphertext_modulus = CiphertextModulus::<Scalar>::try_new_power_of_2(power).unwrap();
     let polynomial_size = PolynomialSize(2048);
 
@@ -18,9 +18,8 @@ pub fn main() {
     let mut secret_generator = SecretRandomGenerator::<DefaultRandomGenerator>::new(seeder.seed());
     let mut encryption_generator = EncryptionRandomGenerator::<DefaultRandomGenerator>::new(seeder.seed(), seeder);
 
-    let std_dev_scaling = 2.0_f64.powi((Scalar::BITS as usize - power) as i32);
     let ntru_noise_distribution =
-        Gaussian::from_dispersion_parameter(StandardDev(0.00000000000000029403601535432533 * std_dev_scaling), 0.0);
+        Gaussian::from_dispersion_parameter(StandardDev(5.38420863449573516845703125e-12), 0.0);
 
     let ntru_secret_key = allocate_and_generate_new_binary_ntru_secret_key(
         polynomial_size,
@@ -29,7 +28,7 @@ pub fn main() {
     );
 
     // NTRU automorphism parameters
-    let decomp_base_log = DecompositionBaseLog(18);
+    let decomp_base_log = DecompositionBaseLog(8);
     let decomp_level_count = DecompositionLevelCount(2);
 
     let ntru_trace_key = allocate_and_generate_new_ntru_trace_key(
@@ -55,7 +54,7 @@ pub fn main() {
         polynomial_size,
         decomp_base_log,
         decomp_level_count,
-        FftType::Split(45),
+        FftType::Split(20),
     );
     convert_standard_ntru_trace_key_to_fourier(
         &ntru_trace_key,
