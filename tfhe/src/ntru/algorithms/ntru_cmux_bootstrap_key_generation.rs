@@ -43,7 +43,7 @@ pub fn generate_ntru_cmux_bootstrap_key<
 
     for (mut ngsw, &input_key_element) in output
         .get_mut_ngsw_list().iter_mut()
-        .zip(input_lwe_secret_key.as_ref()) {
+        .zip(input_lwe_secret_key.as_ref().iter()) {
             encrypt_constant_ngsw_ciphertext(
                 output_ntru_secret_key,
                 &mut ngsw,
@@ -52,6 +52,13 @@ pub fn generate_ntru_cmux_bootstrap_key<
                 generator,
             );
         }
+
+    generate_ntru_switching_key(
+        &output_ntru_secret_key,
+        &mut output.get_mut_ntru_switching_key(),
+        noise_distribution,
+        generator,
+    );
 }
 
 pub fn allocate_and_generate_new_ntru_cmux_bootstrap_key<

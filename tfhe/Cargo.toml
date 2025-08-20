@@ -359,8 +359,8 @@ name = "automorphism_group"
 path = "tests/ntru/automorphism_group.rs"
 
 [[test]]
-name = "ntru_cmux_bootstrap"
-path = "tests/ntru/ntru_cmux_bootstrap.rs"
+name = "ntru_cmux_bootstrap_native_mod"
+path = "tests/ntru/ntru_cmux_bootstrap_native_mod.rs"
 harness = false
 
 [[bench]]

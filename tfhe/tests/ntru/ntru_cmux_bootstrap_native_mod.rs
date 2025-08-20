@@ -1,13 +1,10 @@
-// use rand::Rng;
+use rand::Rng;
 use tfhe::core_crypto::prelude::*;
 use tfhe::ntru::algorithms::*;
 use tfhe::ntru::entities::*;
 use std::time::{Instant, Duration};
 
 type Scalar = u64;
-
-// mod utils;
-// use utils::*;
 
 pub fn main() {
     let ciphertext_modulus = CiphertextModulus::<Scalar>::new_native();
@@ -65,24 +62,9 @@ pub fn main() {
 
     convert_standard_ntru_cmux_bootstrap_key_to_fourier(&ntru_cmux_bsk, &mut fourier_ntru_cmux_bsk);
 
-    let mut acc = NtruCiphertext::new(Scalar::ZERO, polynomial_size, ciphertext_modulus);
-    let plaintext_list = PlaintextList::new(Scalar::ZERO, PlaintextCount(polynomial_size.0));
-    encrypt_ntru_ciphertext(
-        &ntru_secret_key,
-        &mut acc,
-        &plaintext_list,
-        ntru_noise_distribution,
-        &mut encryption_generator,
-    );
-
-    let mut lwe_in = LweCiphertext::new(Scalar::ZERO, lwe_secret_key.lwe_dimension().to_lwe_size(), ciphertext_modulus);
-    encrypt_lwe_ciphertext(
-        &lwe_secret_key,
-        &mut lwe_in,
-        Plaintext(Scalar::ZERO),
-        lwe_noise_distribution,
-        &mut encryption_generator,
-    );
+    let log_message_modulus = 2usize;
+    let message_modulus = 1usize << log_message_modulus;
+    let delta = Scalar::ONE << (Scalar::BITS as usize - 1 - log_message_modulus);
 
     let mut lwe_out = LweCiphertext::new(
         Scalar::ZERO,
@@ -90,30 +72,74 @@ pub fn main() {
         ciphertext_modulus,
     );
 
-    let mut time = Duration::ZERO;
-    let num_test = 1000;
-    let now = Instant::now();
-    for _ in 0..num_test {
+    let mut plaintext_list = PlaintextList::new(Scalar::ZERO, PlaintextCount(polynomial_size.0));
+    {
+        let box_size = polynomial_size.0 / message_modulus;
+        for i in 0..message_modulus {
+            let index = i * box_size;
+            plaintext_list.as_mut()[index..index + box_size]
+                .iter_mut()
+                .for_each(|a| *a = Scalar::cast_from(i).wrapping_mul(delta));
+        }
+
+        let half_box_size = box_size / 2;
+
+        for a_i in plaintext_list.as_mut()[0..half_box_size].iter_mut() {
+            *a_i = (*a_i).wrapping_neg();
+        }
+
+        plaintext_list.as_mut().rotate_left(half_box_size);
+    }
+
+    let mut acc = NtruCiphertext::new(Scalar::ZERO, polynomial_size, ciphertext_modulus);
+
+    let num_test = 10;
+    for idx in 1..=num_test {
+        let input_message = rand::thread_rng().gen_range(0..message_modulus);
+
+        let mut lwe_in = LweCiphertext::new(Scalar::ZERO, lwe_secret_key.lwe_dimension().to_lwe_size(), ciphertext_modulus);
+        encrypt_lwe_ciphertext(
+            &lwe_secret_key,
+            &mut lwe_in,
+            Plaintext(input_message as Scalar * delta),
+            lwe_noise_distribution,
+            &mut encryption_generator,
+        );
+
+        let mut time = Duration::ZERO;
+        let now = Instant::now();
+        switch_to_ntru_ciphertext(
+            &fourier_ntru_cmux_bsk.get_fourier_ntru_switching_key(),
+            &plaintext_list,
+            &mut acc,
+        );
         ntru_cmux_bootstrap_lwe_ciphertext(
             &lwe_in,
             &mut lwe_out,
             &acc,
             &fourier_ntru_cmux_bsk,
         );
+        time += now.elapsed();
+    
+        let decrypted = decrypt_lwe_ciphertext(
+            &large_lwe_secret_key,
+            &lwe_out
+        );
+        let decoded = {
+            let rounding = (decrypted.0 & (delta >> 1)) << 1;
+            decrypted.0.wrapping_add(rounding) / delta
+        };
+        let err = {
+            let correct_val = (input_message as Scalar).wrapping_mul(delta);
+            let d0 = decrypted.0.wrapping_sub(correct_val);
+            let d1 = correct_val.wrapping_sub(decrypted.0);
+            std::cmp::min(d0, d1)
+        };
+        println!("[Test {idx}] input: {}, output: {}, time: {} ms, err: {:.3} bits",
+            input_message,
+            decoded,
+            (time.as_micros() as f64) / 1000_f64,
+            (err as f64).log2(),
+        );
     }
-    time += now.elapsed();
-
-    let decrypted = decrypt_lwe_ciphertext(
-        &large_lwe_secret_key,
-        &lwe_out
-    );
-    let err = {
-        let d0 = decrypted.0;
-        let d1 = decrypted.0.wrapping_neg();
-        std::cmp::min(d0, d1)
-    };
-    println!("{} ms, {:.3}",
-        (time.as_micros() as f64) / (1000 * num_test) as f64,
-        (err as f64).log2(),
-    );
 }
