@@ -62,7 +62,7 @@ pub fn main() {
 
     convert_standard_ntru_cmux_bootstrap_key_to_fourier(&ntru_cmux_bsk, &mut fourier_ntru_cmux_bsk);
 
-    let log_message_modulus = 2usize;
+    let log_message_modulus = 4usize;
     let message_modulus = 1usize << log_message_modulus;
     let delta = Scalar::ONE << (Scalar::BITS as usize - 1 - log_message_modulus);
 
@@ -72,26 +72,24 @@ pub fn main() {
         ciphertext_modulus,
     );
 
-    let mut plaintext_list = PlaintextList::new(Scalar::ZERO, PlaintextCount(polynomial_size.0));
+    let mut acc = PlaintextList::new(Scalar::ZERO, PlaintextCount(polynomial_size.0));
     {
         let box_size = polynomial_size.0 / message_modulus;
         for i in 0..message_modulus {
             let index = i * box_size;
-            plaintext_list.as_mut()[index..index + box_size]
+            acc.as_mut()[index..index + box_size]
                 .iter_mut()
                 .for_each(|a| *a = Scalar::cast_from(i).wrapping_mul(delta));
         }
 
         let half_box_size = box_size / 2;
 
-        for a_i in plaintext_list.as_mut()[0..half_box_size].iter_mut() {
+        for a_i in acc.as_mut()[0..half_box_size].iter_mut() {
             *a_i = (*a_i).wrapping_neg();
         }
 
-        plaintext_list.as_mut().rotate_left(half_box_size);
+        acc.as_mut().rotate_left(half_box_size);
     }
-
-    let mut acc = NtruCiphertext::new(Scalar::ZERO, polynomial_size, ciphertext_modulus);
 
     let num_test = 10;
     for idx in 1..=num_test {
@@ -108,11 +106,6 @@ pub fn main() {
 
         let mut time = Duration::ZERO;
         let now = Instant::now();
-        switch_to_ntru_ciphertext(
-            &fourier_ntru_cmux_bsk.get_fourier_ntru_switching_key(),
-            &plaintext_list,
-            &mut acc,
-        );
         ntru_cmux_bootstrap_lwe_ciphertext(
             &lwe_in,
             &mut lwe_out,

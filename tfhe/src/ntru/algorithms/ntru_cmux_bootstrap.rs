@@ -103,7 +103,7 @@ pub fn ntru_cmux_bootstrap_lwe_ciphertext<
 >(
     input: &LweCiphertext<InputCont>,
     output: &mut LweCiphertext<OutputCont>,
-    accumulator: &NtruCiphertext<AccCont>,
+    accumulator: &PlaintextList<AccCont>,
     fourier_bsk: &FourierNtruCMuxBootstrapKey<KeyCont>,
 ) {
     assert!(
@@ -111,8 +111,8 @@ pub fn ntru_cmux_bootstrap_lwe_ciphertext<
         "This operation requires the input to have a power of two modulus."
     );
     assert_eq!(
-        output.ciphertext_modulus(),
-        accumulator.ciphertext_modulus()
+        output.lwe_size().to_lwe_dimension().0,
+        accumulator.plaintext_count().0,
     );
 
     let mut buffers = ComputationBuffers::new();
@@ -122,7 +122,7 @@ pub fn ntru_cmux_bootstrap_lwe_ciphertext<
 
     buffers.resize(
         ntru_cmux_bootstrap_scratch::<OutputScalar>(
-            accumulator.polynomial_size(),
+            PolynomialSize(accumulator.plaintext_count().0),
             fft,
         )
         .unwrap()
@@ -167,7 +167,7 @@ pub fn ntru_cmux_bootstrap_mem_optimized<InputScalar, OutputScalar, KeyCont, Inp
     bsk: &FourierNtruCMuxBootstrapKey<KeyCont>,
     lwe_in: &LweCiphertext<InputCont>,
     lwe_out: &mut LweCiphertext<OutputCont>,
-    acc: &NtruCiphertext<AccCont>,
+    accumulator: &PlaintextList<AccCont>,
     fft: FftView<'_>,
     stack: &mut PodStack,
 ) where
@@ -178,14 +178,21 @@ pub fn ntru_cmux_bootstrap_mem_optimized<InputScalar, OutputScalar, KeyCont, Inp
     OutputCont: ContainerMut<Element = OutputScalar>,
     AccCont: Container<Element = OutputScalar>,
 {
-    let (local_accumulator_data, stack) = stack.collect_aligned(CACHELINE_ALIGN, acc.as_ref().iter().copied());
+    let polynomial_size = PolynomialSize(accumulator.plaintext_count().0);
+    // let (local_accumulator_data, stack) = stack.collect_aligned(CACHELINE_ALIGN, acc.as_ref().iter().copied());
+    let (local_accumulator_data, stack) = stack.make_aligned_raw::<OutputScalar>(polynomial_size.0, CACHELINE_ALIGN);
     let mut local_accumulator = NtruCiphertextMutView::from_container(
         &mut *local_accumulator_data,
-        acc.polynomial_size(),
-        acc.ciphertext_modulus(),
+        polynomial_size,
+        lwe_out.ciphertext_modulus(),
+    );
+    switch_to_ntru_ciphertext(
+        &bsk.get_fourier_ntru_switching_key(),
+        &accumulator,
+        &mut local_accumulator,
     );
 
-    let log_modulus = acc.polynomial_size().to_blind_rotation_input_modulus_log();
+    let log_modulus = polynomial_size.to_blind_rotation_input_modulus_log();
 
     let msed = lwe_ciphertext_modulus_switch(lwe_in.as_view(), log_modulus);
 
