@@ -14,19 +14,21 @@ fn criterion_benchmark_ntru_rev_trace(c: &mut Criterion) {
     let mut group = c.benchmark_group("NTRU RevHomTrace");
 
     type Scalar = u64;
-    let ciphertext_modulus = CiphertextModulus::<Scalar>::new_native();
     let polynomial_size = PolynomialSize(2048);
 
     let param_list = [
-        ("STD128B2'", DecompositionBaseLog(8), DecompositionLevelCount(4)),
-        ("STD128B2", DecompositionBaseLog(9), DecompositionLevelCount(4)),
-        ("STD128B3", DecompositionBaseLog(9), DecompositionLevelCount(4)),
+        ("STD128B2'", DecompositionBaseLog(8), DecompositionLevelCount(4), 39),
+        ("STD128B2", DecompositionBaseLog(9), DecompositionLevelCount(4), 45),
+        ("STD128B3", DecompositionBaseLog(9), DecompositionLevelCount(4), 45),
     ];
 
     for param in param_list.iter() {
         let name = param.0;
         let tr_decomp_base_log = param.1;
         let tr_decomp_level_count = param.2;
+        let power = param.3;
+
+        let ciphertext_modulus = CiphertextModulus::<Scalar>::try_new_power_of_2(power).unwrap();
 
         let mut seeder = new_seeder();
         let seeder = seeder.as_mut();

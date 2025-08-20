@@ -15,18 +15,21 @@ fn criterion_benchmark_ntru_external_product(c: &mut Criterion) {
     let mut group = c.benchmark_group("NTRU external product");
 
     type Scalar = u64;
-    let ciphertext_modulus = CiphertextModulus::<Scalar>::new_native();
     let polynomial_size = PolynomialSize(2048);
 
     let param_list = [
-        (DecompositionBaseLog(12), DecompositionLevelCount(2)),
-        (DecompositionBaseLog(10), DecompositionLevelCount(3)),
-        (DecompositionBaseLog(8), DecompositionLevelCount(4)),
+        ("STD128B2'", DecompositionBaseLog(12), DecompositionLevelCount(2), 39),
+        ("STD128B2", DecompositionBaseLog(10), DecompositionLevelCount(3), 45),
+        ("STD128B3", DecompositionBaseLog(8), DecompositionLevelCount(4), 45),
     ];
 
     for param in param_list.iter() {
-        let decomp_base_log = param.0;
-        let decomp_level_count = param.1;
+        let name = param.0;
+        let decomp_base_log = param.1;
+        let decomp_level_count = param.2;
+        let power = param.3;
+
+        let ciphertext_modulus = CiphertextModulus::<Scalar>::try_new_power_of_2(power).unwrap();
 
         let mut seeder = new_seeder();
         let seeder = seeder.as_mut();
@@ -115,7 +118,7 @@ fn criterion_benchmark_ntru_external_product(c: &mut Criterion) {
         group.bench_function(
             BenchmarkId::new(
                 "NTRU external product",
-                format!("decomp level count {}", decomp_level_count.0),
+                format!("{name}"),
             ),
             |b| b.iter(|| {
                 add_ntru_external_product_assign(
