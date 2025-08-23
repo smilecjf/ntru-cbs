@@ -287,47 +287,65 @@ impl FourierNgswCiphertextMutView<'_> {
         assert_eq!(standard_ngsw.polynomial_size(), self.polynomial_size());
         let polynomial_size = self.polynomial_size();
         let fourier_poly_size = polynomial_size.to_fourier_polynomial_size().0;
+        let log_modulus = standard_ngsw.ciphertext_modulus().into_modulus_log().0;
+        let log_torus_scaling = Scalar::BITS - log_modulus;
 
         let fft_type = self.fft_type;
         let mut poly_buffer = Polynomial::new(Scalar::ZERO, polynomial_size);
 
-        self.data().split_into(fft_type.num_split())
-            .enumerate()
-            .for_each(|(split_idx, split_fourier)| {
+        match fft_type {
+            FftType::Vanilla => {
                 for (fourier_poly, standard_poly) in izip!(
-                    split_fourier.into_chunks(fourier_poly_size),
+                    self.data().into_chunks(fourier_poly_size),
                     standard_ngsw.as_polynomial_list().iter(),
                 ) {
-                    match fft_type {
-                        FftType::Vanilla => {
-                            fft.forward_as_torus(
-                                FourierPolynomialMutView { data: fourier_poly },
-                                standard_poly,
-                                stack,
-                            );
-                        },
-                        FftType::Split(b) => {
-                            let (lsh_bit, rsh_bit) = if split_idx == 0 {
-                                (Scalar::BITS - b, Scalar::BITS - b)
-                            } else {
-                                (0, b)
-                            };
-
-                            for (standard_coeff, split_coeff)
-                                in standard_poly.iter().zip(poly_buffer.iter_mut())
-                            {
-                                *split_coeff = ((*standard_coeff) << lsh_bit) >> rsh_bit;
-                            }
-
-                            fft.forward_as_torus(
-                                FourierPolynomialMutView { data: fourier_poly },
-                                poly_buffer.as_view(),
-                                stack,
-                            );
-                        },
-                    }
+                    fft.forward_as_torus(
+                        FourierPolynomialMutView { data: fourier_poly },
+                        standard_poly,
+                        stack,
+                    );
                 }
-            });
+            },
+            FftType::Split(b) => {
+                self.data().split_into(fft_type.num_split())
+                    .enumerate()
+                    .for_each(|(split_idx, split_fourier)| {
+                        for (fourier_poly, standard_poly) in izip!(
+                            split_fourier.into_chunks(fourier_poly_size),
+                            standard_ngsw.as_polynomial_list().iter(),
+                        ) {
+                            if split_idx == 0 {
+                                let shift_bit = log_modulus - b;
+                                for (standard_coeff, split_coeff)
+                                    in standard_poly.iter().zip(poly_buffer.iter_mut())
+                                {
+                                    *split_coeff = ((*standard_coeff) << shift_bit) >> shift_bit;
+                                }
+
+                                fft.forward_as_torus(
+                                    FourierPolynomialMutView { data: fourier_poly },
+                                    poly_buffer.as_view(),
+                                    stack,
+                                );
+                            } else { // split_idx == 1
+                                let rsh_bit = log_torus_scaling + b;
+                                let lhs_bit = log_torus_scaling;
+                                for (standard_coeff, split_coeff)
+                                    in standard_poly.iter().zip(poly_buffer.iter_mut())
+                                {
+                                    *split_coeff = ((*standard_coeff) >> rsh_bit) << lhs_bit;
+                                }
+
+                                fft.forward_as_torus(
+                                    FourierPolynomialMutView { data: fourier_poly },
+                                    poly_buffer.as_view(),
+                                    stack,
+                                );
+                            }
+                        }
+                    });
+            },
+        }
     }
 }
 
