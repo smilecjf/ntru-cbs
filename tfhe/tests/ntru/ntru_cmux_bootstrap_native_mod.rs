@@ -58,6 +58,7 @@ pub fn main() {
         swk_decomp_level_count,
         ntru_cmux_bsk.input_lwe_dimension(),
         FftType::Vanilla,
+        FftType::Vanilla,
     );
 
     convert_standard_ntru_cmux_bootstrap_key_to_fourier(&ntru_cmux_bsk, &mut fourier_ntru_cmux_bsk);
@@ -113,7 +114,7 @@ pub fn main() {
             &fourier_ntru_cmux_bsk,
         );
         time += now.elapsed();
-    
+
         let decrypted = decrypt_lwe_ciphertext(
             &large_lwe_secret_key,
             &lwe_out

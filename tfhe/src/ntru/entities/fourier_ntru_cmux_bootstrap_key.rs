@@ -28,6 +28,14 @@ impl<C: Container<Element = c64>> FourierNtruCMuxBootstrapKey<C> {
         self.fourier_ngsw_list.polynomial_size()
     }
 
+    pub fn br_fft_type(&self) -> FftType {
+        self.fourier_ngsw_list.fft_type()
+    }
+
+    pub fn swk_fft_type(&self) -> FftType {
+        self.fourier_ntru_switching_key.fft_type()
+    }
+
     pub fn get_fourier_ngsw_list(&self) -> FourierNgswCiphertextListView<'_> {
         self.fourier_ngsw_list.as_view()
     }
@@ -69,7 +77,8 @@ impl FourierNtruCMuxBootstrapKeyOwned {
         swk_decomp_base_log: DecompositionBaseLog,
         swk_decomp_level_count: DecompositionLevelCount,
         input_lwe_dimension: LweDimension,
-        fft_type: FftType,
+        br_fft_type: FftType,
+        swk_fft_type: FftType,
     ) -> Self {
         Self {
             fourier_ngsw_list: FourierNgswCiphertextList::new(
@@ -77,13 +86,13 @@ impl FourierNtruCMuxBootstrapKeyOwned {
                 br_decomp_base_log,
                 br_decomp_level_count,
                 FourierNgswCiphertextCount(input_lwe_dimension.0),
-                fft_type,
+                br_fft_type,
             ),
             fourier_ntru_switching_key: FourierNtruSwitchingKey::new(
                 polynomial_size,
                 swk_decomp_base_log,
                 swk_decomp_level_count,
-                fft_type,
+                swk_fft_type,
             ),
         }
     }

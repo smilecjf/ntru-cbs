@@ -1,4 +1,4 @@
-//! Module containing primitives pertaining to the generation of NtruCMuxBootstrapKey
+//! Module containing primitives pertaining to the generation of NtruCMuxCircuitBootstrapKey
 
 use crate::core_crypto::commons::generators::EncryptionRandomGenerator;
 use crate::core_crypto::commons::math::random::{
@@ -10,7 +10,7 @@ use crate::core_crypto::entities::*;
 use crate::ntru::entities::*;
 use crate::ntru::algorithms::*;
 
-pub fn generate_ntru_cmux_bootstrap_key<
+pub fn generate_ntru_cmux_circuit_bootstrap_key<
     InputScalar: Copy + CastInto<OutputScalar>,
     OutputScalar: Encryptable<Uniform, NoiseDistribution>,
     NoiseDistribution: Distribution,
@@ -21,7 +21,7 @@ pub fn generate_ntru_cmux_bootstrap_key<
 >(
     input_lwe_secret_key: &LweSecretKey<InputKeyCont>,
     output_ntru_secret_key: &NtruSecretKey<OutputKeyCont>,
-    output: &mut NtruCMuxBootstrapKey<OutputCont>,
+    output: &mut NtruCMuxCircuitBootstrapKey<OutputCont>,
     noise_distribution: NoiseDistribution,
     generator: &mut EncryptionRandomGenerator<Gen>,
 ) {
@@ -41,27 +41,30 @@ pub fn generate_ntru_cmux_bootstrap_key<
         output.polynomial_size()
     );
 
-    for (mut ngsw, &input_key_element) in output
-        .get_mut_ngsw_list().iter_mut()
-        .zip(input_lwe_secret_key.as_ref().iter()) {
-            encrypt_constant_ngsw_ciphertext(
-                output_ntru_secret_key,
-                &mut ngsw,
-                Cleartext(input_key_element.cast_into()),
-                noise_distribution,
-                generator,
-            );
-        }
+    generate_ntru_cmux_bootstrap_key(
+        input_lwe_secret_key,
+        output_ntru_secret_key,
+        &mut output.get_mut_ntru_cmux_bootstrap_key(),
+        noise_distribution,
+        generator,
+    );
 
-    generate_ntru_switching_key(
-        &output_ntru_secret_key,
-        &mut output.get_mut_ntru_switching_key(),
+    generate_ntru_trace_key(
+        output_ntru_secret_key,
+        &mut output.get_mut_ntru_trace_key(),
+        noise_distribution,
+        generator,
+    );
+
+    generate_ntru_scheme_switch_key(
+        output_ntru_secret_key,
+        &mut output.get_mut_ntru_scheme_switch_key(),
         noise_distribution,
         generator,
     );
 }
 
-pub fn allocate_and_generate_new_ntru_cmux_bootstrap_key<
+pub fn allocate_and_generate_new_ntru_cmux_circuit_bootstrap_key<
     InputScalar: Copy + CastInto<OutputScalar>,
     OutputScalar: Encryptable<Uniform, NoiseDistribution>,
     NoiseDistribution: Distribution,
@@ -75,29 +78,36 @@ pub fn allocate_and_generate_new_ntru_cmux_bootstrap_key<
     br_decomp_level_count: DecompositionLevelCount,
     swk_decomp_base_log: DecompositionBaseLog,
     swk_decomp_level_count: DecompositionLevelCount,
+    tr_decomp_base_log: DecompositionBaseLog,
+    tr_decomp_level_count: DecompositionLevelCount,
+    ss_decomp_base_log: DecompositionBaseLog,
+    ss_decomp_level_count: DecompositionLevelCount,
     noise_distribution: NoiseDistribution,
     ciphertext_modulus: CiphertextModulus<OutputScalar>,
     generator: &mut EncryptionRandomGenerator<Gen>,
-) -> NtruCMuxBootstrapKeyOwned<OutputScalar> {
-    let mut bsk = NtruCMuxBootstrapKey::new(
+) -> NtruCMuxCircuitBootstrapKeyOwned<OutputScalar> {
+    let mut cbs_key = NtruCMuxCircuitBootstrapKey::new(
         OutputScalar::ZERO,
         output_ntru_secret_key.polynomial_size(),
+        input_lwe_secret_key.lwe_dimension(),
         br_decomp_base_log,
         br_decomp_level_count,
         swk_decomp_base_log,
         swk_decomp_level_count,
-        input_lwe_secret_key.lwe_dimension(),
+        tr_decomp_base_log,
+        tr_decomp_level_count,
+        ss_decomp_base_log,
+        ss_decomp_level_count,
         ciphertext_modulus,
     );
 
-    generate_ntru_cmux_bootstrap_key(
+    generate_ntru_cmux_circuit_bootstrap_key(
         input_lwe_secret_key,
         output_ntru_secret_key,
-        &mut bsk,
+        &mut cbs_key,
         noise_distribution,
         generator,
     );
 
-    bsk
+    cbs_key
 }
-

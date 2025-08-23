@@ -8,7 +8,7 @@ use aligned_vec::ABox;
 use tfhe_fft::c64;
 
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FourierNtruTraceKey<C: Container<Element = c64>> {
     fourier_ntru_auto_keys: FourierNtruKeyswitchKeyList<C>,
     polynomial_size: PolynomialSize,
@@ -17,6 +17,8 @@ pub struct FourierNtruTraceKey<C: Container<Element = c64>> {
     fft_type: FftType,
 }
 
+pub type FourierNtruTraceKeyView<'a> = FourierNtruTraceKey<&'a [c64]>;
+pub type FourierNtruTraceKeyMutView<'a> = FourierNtruTraceKey<&'a mut [c64]>;
 pub type FourierNtruTraceKeyOwned = FourierNtruTraceKey<ABox<[c64]>>;
 
 impl<C: Container<Element = c64>> FourierNtruTraceKey<C> {
@@ -59,6 +61,16 @@ impl<C: Container<Element = c64>> FourierNtruTraceKey<C> {
     pub fn fft_type(&self) -> FftType {
         self.fft_type
     }
+
+    pub fn as_view(&self) -> FourierNtruTraceKeyView<'_> {
+        FourierNtruTraceKeyView::<'_> {
+            fourier_ntru_auto_keys: self.fourier_ntru_auto_keys.as_view(),
+            polynomial_size: self.polynomial_size,
+            decomp_base_log: self.decomp_base_log,
+            decomp_level_count: self.decomp_level_count,
+            fft_type: self.fft_type,
+        }
+    }
 }
 
 impl<C: ContainerMut<Element = c64>> FourierNtruTraceKey<C> {
@@ -80,6 +92,16 @@ impl<C: ContainerMut<Element = c64>> FourierNtruTraceKey<C> {
             self.decomp_base_log,
             self.fft_type,
         )
+    }
+
+    pub fn as_mut_view(&mut self) -> FourierNtruTraceKeyMutView<'_> {
+        FourierNtruTraceKeyMutView::<'_> {
+            fourier_ntru_auto_keys: self.fourier_ntru_auto_keys.as_mut_view(),
+            polynomial_size: self.polynomial_size,
+            decomp_base_log: self.decomp_base_log,
+            decomp_level_count: self.decomp_level_count,
+            fft_type: self.fft_type,
+        }
     }
 }
 

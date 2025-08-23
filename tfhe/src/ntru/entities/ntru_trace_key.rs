@@ -15,6 +15,8 @@ pub struct NtruTraceKey<C: Container>
     ciphertext_modulus: CiphertextModulus<C::Element>,
 }
 
+pub type NtruTraceKeyView<'data, Scalar> = NtruTraceKey<&'data [Scalar]>;
+pub type NtruTraceKeyMutView<'data, Scalar> = NtruTraceKey<&'data mut [Scalar]>;
 pub type NtruTraceKeyOwned<Scalar> = NtruTraceKey<Vec<Scalar>>;
 
 impl<Scalar: UnsignedInteger, C: Container<Element = Scalar>> NtruTraceKey<C> {
@@ -57,6 +59,16 @@ impl<Scalar: UnsignedInteger, C: Container<Element = Scalar>> NtruTraceKey<C> {
     pub fn ciphertext_modulus(&self) -> CiphertextModulus<Scalar> {
         self.ciphertext_modulus
     }
+
+    pub fn as_view(&self) -> NtruTraceKeyView<'_, Scalar> {
+        NtruTraceKeyView::<'_, Scalar> {
+            ntru_auto_keys: self.ntru_auto_keys.as_view(),
+            polynomial_size: self.polynomial_size,
+            decomp_base_log: self.decomp_base_log,
+            decomp_level_count: self.decomp_level_count,
+            ciphertext_modulus: self.ciphertext_modulus,
+        }
+    }
 }
 
 impl<Scalar: UnsignedInteger, C: ContainerMut<Element = Scalar>> NtruTraceKey<C> {
@@ -78,6 +90,16 @@ impl<Scalar: UnsignedInteger, C: ContainerMut<Element = Scalar>> NtruTraceKey<C>
             self.decomp_base_log,
             self.ciphertext_modulus,
         )
+    }
+
+    pub fn as_mut_view(&mut self) -> NtruTraceKeyMutView<'_, Scalar> {
+        NtruTraceKeyMutView::<'_, Scalar> {
+            ntru_auto_keys: self.ntru_auto_keys.as_mut_view(),
+            polynomial_size: self.polynomial_size,
+            decomp_base_log: self.decomp_base_log,
+            decomp_level_count: self.decomp_level_count,
+            ciphertext_modulus: self.ciphertext_modulus,
+        }
     }
 }
 

@@ -9,10 +9,11 @@ pub fn generate_ntru_trace_key<
     Scalar: Encryptable<Uniform, NoiseDistribution>,
     NoiseDistribution: Distribution,
     InputKeyCont: Container<Element = Scalar>,
+    OutputCont: ContainerMut<Element = Scalar>,
     Gen: ByteRandomGenerator,
 >(
     input_ntru_secret_key: &NtruSecretKey<InputKeyCont>,
-    output_ntru_trace_key: &mut NtruTraceKeyOwned<Scalar>,
+    output_ntru_trace_key: &mut NtruTraceKey<OutputCont>,
     noise_distribution: NoiseDistribution,
     generator: &mut EncryptionRandomGenerator<Gen>,
 ) {

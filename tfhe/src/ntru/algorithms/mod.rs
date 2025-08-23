@@ -19,6 +19,8 @@ pub mod ntru_trace;
 pub mod ntru_cmux_bootstrap_key_generation;
 pub mod ntru_cmux_bootstrap;
 pub mod modulus_switch_lut_many;
+pub mod ntru_cmux_circuit_bootstrap_key_generation;
+pub mod ntru_cmux_circuit_bootstrap;
 
 pub use polynomial_for_ntru::*;
 pub use ntru_secret_key_generation::*;
@@ -41,3 +43,5 @@ pub use ntru_trace::*;
 pub use ntru_cmux_bootstrap_key_generation::*;
 pub use ntru_cmux_bootstrap::*;
 pub use modulus_switch_lut_many::*;
+pub use ntru_cmux_circuit_bootstrap_key_generation::*;
+pub use ntru_cmux_circuit_bootstrap::*;

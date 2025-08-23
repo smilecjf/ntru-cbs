@@ -55,7 +55,7 @@ impl<Scalar: UnsignedInteger, C: ContainerMut<Element = Scalar>> NtruCMuxBootstr
         self.ntru_switching_key.as_mut_view()
     }
 
-    pub fn get_mut_view(&mut self) -> NtruCMuxBootstrapKeyMutView<'_, Scalar> {
+    pub fn as_mut_view(&mut self) -> NtruCMuxBootstrapKeyMutView<'_, Scalar> {
         NtruCMuxBootstrapKeyMutView::<'_, Scalar> {
             ngsw_list: self.ngsw_list.as_mut_view(),
             ntru_switching_key: self.ntru_switching_key.as_mut_view(),

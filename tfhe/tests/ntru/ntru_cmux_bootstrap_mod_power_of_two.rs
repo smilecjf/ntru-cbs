@@ -64,6 +64,7 @@ pub fn test_ntru_cmux_boot(param: NtruCMuxParameters, fft_type: FftType) {
         decomp_level_count,
         ntru_cmux_bsk.input_lwe_dimension(),
         fft_type,
+        fft_type,
     );
 
     convert_standard_ntru_cmux_bootstrap_key_to_fourier(&ntru_cmux_bsk, &mut fourier_ntru_cmux_bsk);

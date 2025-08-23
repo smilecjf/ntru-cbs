@@ -83,6 +83,10 @@ impl<C: Container<Element = c64>> FourierNgswCiphertextList<C> {
         self.decomp_level_count
     }
 
+    pub fn fft_type(&self) -> FftType {
+        self.fft_type
+    }
+
     pub fn ciphertext_count(&self) -> FourierNgswCiphertextCount {
         FourierNgswCiphertextCount(
             self.fourier.data.container_len() / (
