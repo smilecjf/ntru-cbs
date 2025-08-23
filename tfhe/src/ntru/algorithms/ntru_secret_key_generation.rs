@@ -1,5 +1,5 @@
-use crate::core_crypto::commons::generators::SecretRandomGenerator;
-use crate::core_crypto::commons::math::random::{RandomGenerable, UniformBinary};
+use crate::core_crypto::commons::generators::{SecretRandomGenerator, EncryptionRandomGenerator};
+use crate::core_crypto::commons::math::random::{RandomGenerable, Distribution, UniformBinary};
 use crate::core_crypto::commons::traits::*;
 use crate::core_crypto::commons::parameters::*;
 use crate::core_crypto::entities::*;
@@ -47,6 +47,65 @@ pub fn generate_binary_ntru_secret_key<Scalar, KeyCont, Gen>(
         let mut f_inv = Polynomial::new(Scalar::ZERO, polynomial_size);
 
         generator.fill_slice_with_random_uniform_binary(f.as_mut());
+
+        is_invertible = polynomial_inverse_mod_power_of_two(&f, &mut f_inv, power);
+
+        for i in 0..polynomial_size.0 {
+            ntru_secret_key.as_mut()[i] = f.as_ref()[i];
+            ntru_secret_key.as_mut()[i + polynomial_size.0] = f_inv.as_ref()[i];
+        }
+    }
+}
+
+pub fn allocate_and_generate_new_gaussian_ntru_secret_key<Scalar, NoiseDistribution, Gen>(
+    polynomial_size: PolynomialSize,
+    ciphertext_modulus: CiphertextModulus<Scalar>,
+    noise_distribution: NoiseDistribution,
+    generator: &mut EncryptionRandomGenerator<Gen>,
+) -> NtruSecretKeyOwned<Scalar>
+where
+    Scalar: UnsignedInteger + RandomGenerable<NoiseDistribution, CustomModulus = Scalar>,
+    NoiseDistribution: Distribution,
+    Gen: ByteRandomGenerator,
+{
+    let mut ntru_secret_key =
+        NtruSecretKeyOwned::new_empty_key(Scalar::ZERO, polynomial_size, ciphertext_modulus);
+
+    generate_gaussian_ntru_secret_key(&mut ntru_secret_key, ciphertext_modulus, noise_distribution, generator);
+
+    ntru_secret_key
+}
+
+pub fn generate_gaussian_ntru_secret_key<Scalar, KeyCont, NoiseDistribution, Gen>(
+    ntru_secret_key: &mut NtruSecretKey<KeyCont>,
+    ciphertext_modulus: CiphertextModulus<Scalar>,
+    noise_distribution: NoiseDistribution,
+    generator: &mut EncryptionRandomGenerator<Gen>, // Currently use EncryptionRandomGenerator for Gaussian error sampling
+) where
+    Scalar: UnsignedInteger + RandomGenerable<NoiseDistribution, CustomModulus = Scalar>,
+    KeyCont: ContainerMut<Element = Scalar>,
+    NoiseDistribution: Distribution,
+    Gen: ByteRandomGenerator,
+{
+    // Currently only suuports power-of-two modulus
+    assert!(
+        ciphertext_modulus.is_compatible_with_native_modulus(),
+        "Only supports power-of-two modulus currently"
+    );
+    let power = ciphertext_modulus.into_modulus_log().0;
+
+    let polynomial_size = ntru_secret_key.polynomial_size();
+    let mut is_invertible = false;
+
+    while !is_invertible {
+        let mut f = Polynomial::new(Scalar::ZERO, polynomial_size);
+        let mut f_inv = Polynomial::new(Scalar::ZERO, polynomial_size);
+
+        generator.fill_slice_with_random_noise_from_distribution_custom_mod(
+            f.as_mut(),
+            noise_distribution,
+            ciphertext_modulus,
+        );
 
         is_invertible = polynomial_inverse_mod_power_of_two(&f, &mut f_inv, power);
 

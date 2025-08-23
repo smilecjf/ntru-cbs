@@ -150,4 +150,19 @@ fn add_ntru_split_external_product_assign<Scalar>(
             substack0,
         );
     }
+
+    let ciphertext_modulus = out.ciphertext_modulus();
+    if !ciphertext_modulus.is_native_modulus() {
+        // When we convert back from the fourier domain, integer values will contain up to 53
+        // MSBs with information. In our representation of power of 2 moduli < native modulus we
+        // fill the MSBs and leave the LSBs empty, this usage of the signed decomposer allows to
+        // round while keeping the data in the MSBs
+        let signed_decomposer = SignedDecomposer::new(
+            DecompositionBaseLog(ciphertext_modulus.get_custom_modulus().ilog2() as usize),
+            DecompositionLevelCount(1),
+        );
+        out.as_mut()
+            .iter_mut()
+            .for_each(|x| *x = signed_decomposer.closest_representable(*x));
+    }
 }
