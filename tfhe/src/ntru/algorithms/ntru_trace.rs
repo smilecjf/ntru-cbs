@@ -1,6 +1,5 @@
 use crate::core_crypto::commons::computation_buffers::ComputationBuffers;
 use crate::core_crypto::commons::traits::*;
-use crate::core_crypto::algorithms::slice_algorithms::slice_wrapping_scalar_div_assign;
 use crate::core_crypto::fft_impl::fft64::math::fft::{Fft, FftView};
 use crate::ntru::algorithms::*;
 use crate::ntru::entities::*;
@@ -128,7 +127,7 @@ pub fn rev_trace_ntru_ciphertext<Scalar, KeyCont, InputCont, OutputCont>(
     for k in 1..=polynomial_size.0.ilog2() {
         let fourier_ntru_auto_key = ntru_trace_key.get_automorphism_key(k as usize - 1);
 
-        slice_wrapping_scalar_div_assign(output_ntru_ciphertext.as_mut(), Scalar::TWO);
+        ntru_ciphertext_round_by_2_assign(output_ntru_ciphertext);
 
         automorphism_ntru_ciphertext(
             &fourier_ntru_auto_key,
