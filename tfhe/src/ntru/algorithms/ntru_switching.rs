@@ -36,7 +36,7 @@ pub fn convert_standard_ntru_switching_key_to_fourier<Scalar, InputCont, OutputC
 
     let mut buffers = ComputationBuffers::new();
     buffers.resize(
-        convert_standard_ntru_automorphism_key_to_fourier_mem_optimized_requirement(fft)
+        convert_standard_ntru_switching_key_to_fourier_mem_optimized_requirement(fft)
             .unwrap()
             .unaligned_bytes_required(),
     );
