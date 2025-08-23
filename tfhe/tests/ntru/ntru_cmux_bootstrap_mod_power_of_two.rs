@@ -2,26 +2,20 @@ use rand::Rng;
 use tfhe::core_crypto::prelude::*;
 use tfhe::ntru::algorithms::*;
 use tfhe::ntru::entities::*;
-use std::time::{Instant, Duration};
+use std::time::Instant;
 
 type Scalar = u64;
 type SmallScalar = u32;
 
-pub fn test_ntru_cmux_boot(
-    power: usize,
-    std_dev: f64,
-    br_decomp_base_log: DecompositionBaseLog,
-    br_decomp_level_count: DecompositionLevelCount,
-    swk_decomp_base_log: DecompositionBaseLog,
-    swk_decomp_level_count: DecompositionLevelCount,
-) {
-    let ciphertext_modulus = CiphertextModulus::<Scalar>::try_new_power_of_2(power).unwrap();
+pub fn test_ntru_cmux_boot(param: NtruCMuxParameters, fft_type: FftType) {
+    let log_output_modulus = param.log_output_modulus().0;
+    let ciphertext_modulus = CiphertextModulus::<Scalar>::try_new_power_of_2(log_output_modulus).unwrap();
 
-    let small_power = 14;
-    let small_ciphertext_modulus = CiphertextModulus::<SmallScalar>::try_new_power_of_2(small_power).unwrap();
+    let log_input_modulus = param.log_input_modulus().0;
+    let small_ciphertext_modulus = CiphertextModulus::<SmallScalar>::try_new_power_of_2(log_input_modulus).unwrap();
 
-    let polynomial_size = PolynomialSize(2048);
-    let lwe_dimension = LweDimension(571);
+    let polynomial_size = param.polynomial_size();
+    let lwe_dimension = param.input_lwe_dimension();
 
     let mut seeder = new_seeder();
     let seeder = seeder.as_mut();
@@ -29,15 +23,16 @@ pub fn test_ntru_cmux_boot(
     let mut encryption_generator = EncryptionRandomGenerator::<DefaultRandomGenerator>::new(seeder.seed(), seeder);
 
     let ntru_noise_distribution =
-        Gaussian::from_dispersion_parameter(StandardDev(std_dev / 2.0.powi(power as i32)), 0.0);
+        Gaussian::from_dispersion_parameter(StandardDev(param.torus_ntru_std_dev()), 0.0);
 
     let lwe_noise_distribution =
-        Gaussian::from_dispersion_parameter(StandardDev(0.00077880859375), 0.0);
+        Gaussian::from_dispersion_parameter(StandardDev(param.torus_ntru_std_dev()), 0.0);
 
-    let ntru_secret_key = allocate_and_generate_new_binary_ntru_secret_key(
+    let ntru_secret_key = allocate_and_generate_new_gaussian_ntru_secret_key(
         polynomial_size,
         ciphertext_modulus,
-        &mut secret_generator,
+        ntru_noise_distribution,
+        &mut encryption_generator,
     );
     let large_lwe_secret_key = ntru_secret_key.clone().into_lwe_secret_key();
 
@@ -46,13 +41,16 @@ pub fn test_ntru_cmux_boot(
         &mut secret_generator,
     );
 
+    let decomp_base_log = param.br_decomp_base_log();
+    let decomp_level_count = param.br_decomp_level_count();
+
     let ntru_cmux_bsk = allocate_and_generate_new_ntru_cmux_bootstrap_key(
         &lwe_secret_key,
         &ntru_secret_key,
-        br_decomp_base_log,
-        br_decomp_level_count,
-        swk_decomp_base_log,
-        swk_decomp_level_count,
+        decomp_base_log,
+        decomp_level_count,
+        decomp_base_log,
+        decomp_level_count,
         ntru_noise_distribution,
         ciphertext_modulus,
         &mut encryption_generator,
@@ -60,20 +58,20 @@ pub fn test_ntru_cmux_boot(
 
     let mut fourier_ntru_cmux_bsk = FourierNtruCMuxBootstrapKey::new(
         polynomial_size,
-        br_decomp_base_log,
-        br_decomp_level_count,
-        swk_decomp_base_log,
-        swk_decomp_level_count,
+        decomp_base_log,
+        decomp_level_count,
+        decomp_base_log,
+        decomp_level_count,
         ntru_cmux_bsk.input_lwe_dimension(),
-        FftType::Vanilla,
+        fft_type,
     );
 
     convert_standard_ntru_cmux_bootstrap_key_to_fourier(&ntru_cmux_bsk, &mut fourier_ntru_cmux_bsk);
 
     let log_message_modulus = 4usize;
     let message_modulus = 1usize << log_message_modulus;
-    let delta = Scalar::ONE << (power - 1 - log_message_modulus);
-    let small_delta = SmallScalar::ONE << (small_power - 1 - log_message_modulus);
+    let delta = Scalar::ONE << (log_output_modulus - 1 - log_message_modulus);
+    let small_delta = SmallScalar::ONE << (log_input_modulus - 1 - log_message_modulus);
 
     let mut lwe_out = LweCiphertext::new(
         Scalar::ZERO,
@@ -113,7 +111,6 @@ pub fn test_ntru_cmux_boot(
             &mut encryption_generator,
         );
 
-        let mut time = Duration::ZERO;
         let now = Instant::now();
         ntru_cmux_bootstrap_lwe_ciphertext(
             &lwe_in,
@@ -121,7 +118,7 @@ pub fn test_ntru_cmux_boot(
             &acc,
             &fourier_ntru_cmux_bsk,
         );
-        time += now.elapsed();
+        let time = now.elapsed();
 
         let torus_scaling = ciphertext_modulus.get_power_of_two_scaling_to_native_torus();
 
@@ -152,13 +149,19 @@ pub fn test_ntru_cmux_boot(
 }
 
 pub fn main() {
-    println!("========= STD128B2' ========");
-    test_ntru_cmux_boot(39, 2.96, DecompositionBaseLog(12), DecompositionLevelCount(2), DecompositionBaseLog(12), DecompositionLevelCount(2));
+    let param_list = [
+        (NTRU_CMUX_STD128B2_PRIME, FftType::Vanilla),
+        (NTRU_CMUX_STD128B2_PRIME, FftType::Split(20)),
+        (NTRU_CMUX_STD128B2, FftType::Vanilla),
+        (NTRU_CMUX_STD128B2, FftType::Split(25)),
+        (NTRU_CMUX_STD128B3, FftType::Vanilla),
+        (NTRU_CMUX_STD128B3, FftType::Split(25)),
+        ];
 
-    println!("\n======== STD128B2 ========");
-    test_ntru_cmux_boot(45, 23.0, DecompositionBaseLog(13), DecompositionLevelCount(2), DecompositionBaseLog(13), DecompositionLevelCount(2));
-
-    println!("\n======== STD128B3 ========");
-    test_ntru_cmux_boot(45, 23.0, DecompositionBaseLog(10), DecompositionLevelCount(3), DecompositionBaseLog(10), DecompositionLevelCount(3));
-
+    for (param, fft_type) in param_list {
+        param.print_info();
+        println!("FftType: {fft_type:?}");
+        test_ntru_cmux_boot(param, fft_type);
+        println!();
+    }
 }

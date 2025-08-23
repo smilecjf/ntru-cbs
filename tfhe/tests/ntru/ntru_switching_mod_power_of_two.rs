@@ -2,30 +2,30 @@ use rand::Rng;
 use tfhe::core_crypto::prelude::*;
 use tfhe::ntru::algorithms::*;
 use tfhe::ntru::entities::*;
+use std::time::Instant;
 
 type Scalar = u64;
 
 mod utils;
 use utils::*;
 
-pub fn main() {
-    let power = 39;
-    let ciphertext_modulus = CiphertextModulus::<Scalar>::try_new_power_of_2(power).unwrap();
-    let polynomial_size = PolynomialSize(2048);
+pub fn test_ntru_switching(param: NtruCMuxParameters, fft_type: FftType) {
+    let log_modulus = param.log_output_modulus().0;
+    let ciphertext_modulus = CiphertextModulus::<Scalar>::try_new_power_of_2(log_modulus).unwrap();
+    let polynomial_size = param.polynomial_size();
 
     let mut seeder = new_seeder();
     let seeder = seeder.as_mut();
-    let mut secret_generator = SecretRandomGenerator::<DefaultRandomGenerator>::new(seeder.seed());
     let mut encryption_generator = EncryptionRandomGenerator::<DefaultRandomGenerator>::new(seeder.seed(), seeder);
 
     let ntru_noise_distribution =
-        Gaussian::from_dispersion_parameter(StandardDev(5.38420863449573516845703125e-12), 0.0);
+        Gaussian::from_dispersion_parameter(StandardDev(param.torus_ntru_std_dev()), 0.0);
 
-    let ntru_secret_key = allocate_and_generate_new_binary_ntru_secret_key(polynomial_size, ciphertext_modulus, &mut secret_generator);
+    let ntru_secret_key = allocate_and_generate_new_gaussian_ntru_secret_key(polynomial_size, ciphertext_modulus, ntru_noise_distribution, &mut encryption_generator);
 
     // NTRU switching parameters
-    let decomp_base_log = DecompositionBaseLog(10);
-    let decomp_level_count = DecompositionLevelCount(3);
+    let decomp_base_log = param.br_decomp_base_log();
+    let decomp_level_count = param.br_decomp_level_count();
 
     let ntru_swk = allocate_and_generate_new_ntru_switching_key(
         &ntru_secret_key,
@@ -39,28 +39,17 @@ pub fn main() {
         polynomial_size,
         decomp_base_log,
         decomp_level_count,
-        FftType::Vanilla,
+        fft_type,
     );
     convert_standard_ntru_switching_key_to_fourier(
         &ntru_swk,
         &mut fourier_ntru_swk,
     );
 
-    let mut split_fourier_ntru_swk = FourierNtruSwitchingKey::new(
-        polynomial_size,
-        decomp_base_log,
-        decomp_level_count,
-        FftType::Split(20),
-    );
-    convert_standard_ntru_switching_key_to_fourier(
-        &ntru_swk,
-        &mut split_fourier_ntru_swk,
-    );
-
     // NTRU input parameter
     let log_message_modulus = 4;
     let message_modulus = Scalar::ONE << log_message_modulus;
-    let delta = Scalar::ONE << (power - log_message_modulus);
+    let delta = Scalar::ONE << (log_modulus - log_message_modulus);
 
     let mut input_message_list = PlaintextList::new(
         Scalar::ZERO,
@@ -89,12 +78,13 @@ pub fn main() {
             input_plaintext_list.as_mut()[i] = rand_msg * delta;
         }
 
-        // Vanilla FFT-based NTRU switching
+        let now = Instant::now();
         switch_to_ntru_ciphertext(
             &fourier_ntru_swk,
             &input_plaintext_list,
             &mut ntru_ciphertext,
         );
+        let time = now.elapsed();
 
         decrypt_ntru_ciphertext(
             &ntru_secret_key,
@@ -109,30 +99,30 @@ pub fn main() {
             delta,
         );
 
-        // Split FFT-based NTRU switching
-        switch_to_ntru_ciphertext(
-            &split_fourier_ntru_swk,
-            &input_plaintext_list,
-            &mut ntru_ciphertext,
-        );
-
-        decrypt_ntru_ciphertext(
-            &ntru_secret_key,
-            &ntru_ciphertext,
-            &mut decrypted_plaintext_list,
-        );
-
-        let split_max_err = get_max_error(
-            &decrypted_plaintext_list,
-            &input_message_list,
-            ciphertext_modulus.get_power_of_two_scaling_to_native_torus(),
-            delta,
-        );
-
         println!(
-            "[Test {idx}] Vanilla switching max error: {:.3} bits, Split switching max error: {:.3} bits",
+            "[Test {idx}] time: {} µs, max error: {:.3} bits",
+            time.as_micros(),
             (max_err as f64).log2(),
-            (split_max_err as f64).log2(),
         );
+    }
+}
+
+pub fn main() {
+    println!("* Test NTRU switching with blind rotation decomposition parameters\n");
+
+    let param_list = [
+        (NTRU_CMUX_STD128B2_PRIME, FftType::Vanilla),
+        (NTRU_CMUX_STD128B2_PRIME, FftType::Split(20)),
+        (NTRU_CMUX_STD128B2, FftType::Vanilla),
+        (NTRU_CMUX_STD128B2, FftType::Split(25)),
+        (NTRU_CMUX_STD128B3, FftType::Vanilla),
+        (NTRU_CMUX_STD128B3, FftType::Split(25)),
+        ];
+
+    for (param, fft_type) in param_list {
+        param.print_info();
+        println!("FftType: {fft_type:?}");
+        test_ntru_switching(param, fft_type);
+        println!();
     }
 }

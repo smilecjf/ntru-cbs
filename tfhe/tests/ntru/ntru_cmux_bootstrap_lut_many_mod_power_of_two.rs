@@ -8,21 +8,18 @@ type Scalar = u64;
 type SmallScalar = u32;
 
 pub fn test_ntru_cmux_boot_lut_many(
-    power: usize,
-    std_dev: f64,
-    br_decomp_base_log: DecompositionBaseLog,
-    br_decomp_level_count: DecompositionLevelCount,
-    swk_decomp_base_log: DecompositionBaseLog,
-    swk_decomp_level_count: DecompositionLevelCount,
+    param: NtruCMuxParameters,
     log_lut_count: LutCountLog,
+    fft_type: FftType,
 ) {
-    let ciphertext_modulus = CiphertextModulus::<Scalar>::try_new_power_of_2(power).unwrap();
+    let log_output_modulus = param.log_output_modulus().0;
+    let ciphertext_modulus = CiphertextModulus::<Scalar>::try_new_power_of_2(log_output_modulus).unwrap();
 
-    let small_power = 14;
-    let small_ciphertext_modulus = CiphertextModulus::<SmallScalar>::try_new_power_of_2(small_power).unwrap();
+    let log_input_modulus = param.log_input_modulus().0;
+    let small_ciphertext_modulus = CiphertextModulus::<SmallScalar>::try_new_power_of_2(log_input_modulus).unwrap();
 
-    let polynomial_size = PolynomialSize(2048);
-    let lwe_dimension = LweDimension(571);
+    let polynomial_size = param.polynomial_size();
+    let lwe_dimension = param.input_lwe_dimension();
 
     let mut seeder = new_seeder();
     let seeder = seeder.as_mut();
@@ -30,15 +27,16 @@ pub fn test_ntru_cmux_boot_lut_many(
     let mut encryption_generator = EncryptionRandomGenerator::<DefaultRandomGenerator>::new(seeder.seed(), seeder);
 
     let ntru_noise_distribution =
-        Gaussian::from_dispersion_parameter(StandardDev(std_dev / 2.0.powi(power as i32)), 0.0);
+        Gaussian::from_dispersion_parameter(StandardDev(param.torus_ntru_std_dev()), 0.0);
 
     let lwe_noise_distribution =
-        Gaussian::from_dispersion_parameter(StandardDev(0.00077880859375), 0.0);
+        Gaussian::from_dispersion_parameter(StandardDev(param.torus_lwe_std_dev()), 0.0);
 
-    let ntru_secret_key = allocate_and_generate_new_binary_ntru_secret_key(
+    let ntru_secret_key = allocate_and_generate_new_gaussian_ntru_secret_key(
         polynomial_size,
         ciphertext_modulus,
-        &mut secret_generator,
+        ntru_noise_distribution,
+        &mut encryption_generator,
     );
     let large_lwe_secret_key = ntru_secret_key.clone().into_lwe_secret_key();
 
@@ -47,13 +45,16 @@ pub fn test_ntru_cmux_boot_lut_many(
         &mut secret_generator,
     );
 
+    let decomp_base_log = param.br_decomp_base_log();
+    let decomp_level_count = param.br_decomp_level_count();
+
     let ntru_cmux_bsk = allocate_and_generate_new_ntru_cmux_bootstrap_key(
         &lwe_secret_key,
         &ntru_secret_key,
-        br_decomp_base_log,
-        br_decomp_level_count,
-        swk_decomp_base_log,
-        swk_decomp_level_count,
+        decomp_base_log,
+        decomp_level_count,
+        decomp_base_log,
+        decomp_level_count,
         ntru_noise_distribution,
         ciphertext_modulus,
         &mut encryption_generator,
@@ -61,20 +62,20 @@ pub fn test_ntru_cmux_boot_lut_many(
 
     let mut fourier_ntru_cmux_bsk = FourierNtruCMuxBootstrapKey::new(
         polynomial_size,
-        br_decomp_base_log,
-        br_decomp_level_count,
-        swk_decomp_base_log,
-        swk_decomp_level_count,
-        ntru_cmux_bsk.input_lwe_dimension(),
-        FftType::Vanilla,
+        decomp_base_log,
+        decomp_level_count,
+        decomp_base_log,
+        decomp_level_count,
+        param.input_lwe_dimension(),
+        fft_type,
     );
 
     convert_standard_ntru_cmux_bootstrap_key_to_fourier(&ntru_cmux_bsk, &mut fourier_ntru_cmux_bsk);
 
-    let log_message_modulus = 4usize;
+    let log_message_modulus = 2usize;
     let message_modulus = 1usize << log_message_modulus;
-    let delta = Scalar::ONE << (power - 1 - log_message_modulus);
-    let small_delta = SmallScalar::ONE << (small_power - 1 - log_message_modulus);
+    let delta = Scalar::ONE << (log_output_modulus - 1 - log_message_modulus);
+    let small_delta = SmallScalar::ONE << (log_input_modulus - 1 - log_message_modulus);
 
     let lut_count = 1 << log_lut_count.0;
     let mut lwe_out_list = LweCiphertextList::new(
@@ -92,7 +93,7 @@ pub fn test_ntru_cmux_boot_lut_many(
             for (i, elem) in acc.as_mut()[index..index + box_size].iter_mut().enumerate() {
                 let k = i % lut_count;
                 let scale = delta >> k;
-                *elem = Scalar::cast_from(x).wrapping_mul(scale);
+                *elem = Scalar::cast_from((x + k) % message_modulus).wrapping_mul(scale);
             }
         }
 
@@ -144,7 +145,7 @@ pub fn test_ntru_cmux_boot_lut_many(
                 scaled_decrypted.wrapping_add(rounding) / scale.wrapping_mul(torus_scaling)
             };
             let err = {
-                let correct_val = (input_message as Scalar)
+                let correct_val = (((input_message + i) % message_modulus) as Scalar)
                     .wrapping_mul(scale)
                     .wrapping_mul(torus_scaling);
                 let d0 = scaled_decrypted.wrapping_sub(correct_val);
@@ -161,13 +162,20 @@ pub fn test_ntru_cmux_boot_lut_many(
 }
 
 pub fn main() {
-    println!("========= STD128B2' ========");
-    test_ntru_cmux_boot_lut_many(39, 2.96, DecompositionBaseLog(12), DecompositionLevelCount(2), DecompositionBaseLog(12), DecompositionLevelCount(2), LutCountLog(2));
+    let log_lut_count = LutCountLog(2);
 
-    println!("\n======== STD128B2 ========");
-    test_ntru_cmux_boot_lut_many(45, 23.0, DecompositionBaseLog(13), DecompositionLevelCount(2), DecompositionBaseLog(13), DecompositionLevelCount(2), LutCountLog(2));
-
-    println!("\n======== STD128B3 ========");
-    test_ntru_cmux_boot_lut_many(45, 23.0, DecompositionBaseLog(10), DecompositionLevelCount(3), DecompositionBaseLog(10), DecompositionLevelCount(3), LutCountLog(2));
-
+    let param_list = [
+        (NTRU_CMUX_STD128B2_PRIME, log_lut_count, FftType::Vanilla),
+        (NTRU_CMUX_STD128B2_PRIME, log_lut_count, FftType::Split(20)),
+        (NTRU_CMUX_STD128B2, log_lut_count, FftType::Vanilla),
+        (NTRU_CMUX_STD128B2, log_lut_count, FftType::Split(25)),
+        (NTRU_CMUX_STD128B3, log_lut_count, FftType::Vanilla),
+        (NTRU_CMUX_STD128B3, log_lut_count, FftType::Split(25)),
+    ];
+    for (param, log_lut_count, fft_type) in param_list {
+        param.print_info();
+        println!("FftType: {fft_type:?}, LutCountLog: {log_lut_count:?}");
+        test_ntru_cmux_boot_lut_many(param, log_lut_count, fft_type);
+        println!();
+    }
 }

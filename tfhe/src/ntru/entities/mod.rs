@@ -19,6 +19,7 @@ pub mod ntru_cmux_bootstrap_key;
 pub mod fourier_ntru_cmux_bootstrap_key;
 pub mod modulus_switched_lwe_ciphertext_many_lut;
 pub mod automorphism_group;
+pub mod ntru_parameter_sets;
 
 pub use ntru_secret_key::*;
 pub use ntru_ciphertext::*;
@@ -41,3 +42,4 @@ pub use ntru_cmux_bootstrap_key::*;
 pub use fourier_ntru_cmux_bootstrap_key::*;
 pub use modulus_switched_lwe_ciphertext_many_lut::*;
 pub use automorphism_group::*;
+pub use ntru_parameter_sets::*;

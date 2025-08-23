@@ -89,6 +89,7 @@ impl<C: Container<Element = c64>> FourierNgswCiphertextList<C> {
                 self.fourier.polynomial_size
                     .to_fourier_polynomial_size().0
                     * self.decomp_level_count.0
+                    * self.fft_type.num_split()
             )
         )
     }
