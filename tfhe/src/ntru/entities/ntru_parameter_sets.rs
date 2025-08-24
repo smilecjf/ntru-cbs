@@ -146,8 +146,8 @@ pub const NTRU_CMUX_STD128B2_PRIME: NtruCMuxParameters = NtruCMuxParameters {
     br_decomp_level_count: DecompositionLevelCount(2),
     tr_decomp_base_log: DecompositionBaseLog(8),
     tr_decomp_level_count: DecompositionLevelCount(4),
-    ss_decomp_base_log: DecompositionBaseLog(10),
-    ss_decomp_level_count: DecompositionLevelCount(3),
+    ss_decomp_base_log: DecompositionBaseLog(8),
+    ss_decomp_level_count: DecompositionLevelCount(5),
 };
 
 pub const NTRU_CMUX_STD128B2: NtruCMuxParameters = NtruCMuxParameters {
@@ -162,8 +162,8 @@ pub const NTRU_CMUX_STD128B2: NtruCMuxParameters = NtruCMuxParameters {
     br_decomp_level_count: DecompositionLevelCount(2),
     tr_decomp_base_log: DecompositionBaseLog(9),
     tr_decomp_level_count: DecompositionLevelCount(4),
-    ss_decomp_base_log: DecompositionBaseLog(10),
-    ss_decomp_level_count: DecompositionLevelCount(2),
+    ss_decomp_base_log: DecompositionBaseLog(8),
+    ss_decomp_level_count: DecompositionLevelCount(5),
 };
 
 pub const NTRU_CMUX_STD128B3: NtruCMuxParameters = NtruCMuxParameters {
@@ -178,6 +178,6 @@ pub const NTRU_CMUX_STD128B3: NtruCMuxParameters = NtruCMuxParameters {
     br_decomp_level_count: DecompositionLevelCount(3),
     tr_decomp_base_log: DecompositionBaseLog(9),
     tr_decomp_level_count: DecompositionLevelCount(4),
-    ss_decomp_base_log: DecompositionBaseLog(10),
-    ss_decomp_level_count: DecompositionLevelCount(2),
+    ss_decomp_base_log: DecompositionBaseLog(8),
+    ss_decomp_level_count: DecompositionLevelCount(5),
 };

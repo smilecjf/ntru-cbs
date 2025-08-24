@@ -3,15 +3,10 @@ use crate::core_crypto::commons::traits::*;
 use crate::core_crypto::commons::parameters::*;
 use crate::core_crypto::entities::*;
 use crate::core_crypto::fft_impl::fft64::math::fft::{Fft, FftView};
-use crate::core_crypto::prelude::lwe_ciphertext_modulus_switch;
-use crate::core_crypto::prelude::polynomial_algorithms::polynomial_wrapping_monic_monomial_div;
-use crate::core_crypto::prelude::polynomial_algorithms::polynomial_wrapping_monic_monomial_mul_and_subtract;
-use crate::core_crypto::prelude::ModulusSwitchedLweCiphertext;
-use crate::core_crypto::prelude::SignedDecomposer;
+use crate::core_crypto::prelude::polynomial_algorithms::polynomial_wrapping_monic_monomial_div_assign;
 use crate::ntru::entities::*;
 use crate::ntru::algorithms::*;
 
-use aligned_vec::CACHELINE_ALIGN;
 use dyn_stack::{PodStack, SizeOverflow, StackReq};
 use tfhe_fft::c64;
 
@@ -97,4 +92,175 @@ pub fn convert_standard_ntru_cmux_circuit_bootstrap_key_to_fourier_mem_optimized
     );
 }
 
+pub fn ntru_cmux_circuit_bootstrap_lwe_ciphertext<
+    InputScalar: UnsignedTorus + CastInto<usize>,
+    OutputScalar: UnsignedTorus,
+    InputCont: Container<Element = InputScalar>,
+    OutputCont: ContainerMut<Element = OutputScalar>,
+    KeyCont: Container<Element = c64>,
+>(
+    input: &LweCiphertext<InputCont>,
+    output: &mut NgswCiphertext<OutputCont>,
+    fourier_ntru_cmux_cbs_key: &FourierNtruCMuxCircuitBootstrapKey<KeyCont>,
+    log_lut_count: LutCountLog,
+) {
+    let polynomial_size = output.polynomial_size();
 
+    let mut buffers = ComputationBuffers::new();
+    let fft = Fft::new(polynomial_size);
+    let fft = fft.as_view();
+
+    buffers.resize(
+        ntru_cmux_circuit_bootstrap_lwe_ciphertext_scratch::<OutputScalar>(
+            polynomial_size,
+            fft,
+        )
+        .unwrap()
+        .unaligned_bytes_required(),
+    );
+
+    let stack = buffers.stack();
+
+    ntru_cmux_circuit_bootstrap_lwe_ciphertext_mem_optimized(
+        input,
+        output,
+        fourier_ntru_cmux_cbs_key,
+        log_lut_count,
+        fft,
+        stack,
+    );
+}
+
+pub fn ntru_cmux_circuit_bootstrap_lwe_ciphertext_scratch<Scalar>(
+    polynomial_size: PolynomialSize,
+    fft: FftView<'_>,
+) -> Result<StackReq, SizeOverflow> {
+    StackReq::try_all_of([
+        StackReq::try_new::<Scalar>(polynomial_size.0)?,
+        StackReq::try_new::<Scalar>(polynomial_size.0)?,
+        StackReq::try_any_of([
+            ntru_cmux_blind_rotate_assign_scratch::<Scalar>(polynomial_size, fft)?,
+            // trace
+            // scheme_switch
+        ])?,
+    ])
+}
+
+pub fn ntru_cmux_circuit_bootstrap_lwe_ciphertext_mem_optimized<
+    InputScalar: UnsignedTorus + CastInto<usize>,
+    OutputScalar: UnsignedTorus,
+    InputCont: Container<Element = InputScalar>,
+    OutputCont: ContainerMut<Element = OutputScalar>,
+    KeyCont: Container<Element = c64>,
+>(
+    input: &LweCiphertext<InputCont>,
+    output: &mut NgswCiphertext<OutputCont>,
+    fourier_ntru_cmux_cbs_key: &FourierNtruCMuxCircuitBootstrapKey<KeyCont>,
+    log_lut_count: LutCountLog,
+    fft: FftView<'_>,
+    stack: &mut PodStack,
+) {
+    assert_eq!(
+        input.lwe_size().to_lwe_dimension(),
+        fourier_ntru_cmux_cbs_key.input_lwe_dimension(),
+    );
+
+    assert_eq!(
+        output.polynomial_size(),
+        fourier_ntru_cmux_cbs_key.polynomial_size(),
+    );
+
+    let polynomial_size = output.polynomial_size();
+    let half_box_size = polynomial_size.0 / 2;
+    let ciphertext_modulus = output.ciphertext_modulus();
+    let log_ciphertext_modulus = ciphertext_modulus.into_modulus_log().0;
+
+    let lut_count = 1 << log_lut_count.0;
+    let decomp_base_log = output.decomposition_base_log();
+    let decomp_level_count = output.decomposition_level_count();
+
+    let fourier_ntru_cmux_bsk = fourier_ntru_cmux_cbs_key.get_fourier_ntru_cmux_bootstrap_key();
+    let fourier_ntru_trace_key = fourier_ntru_cmux_cbs_key.get_fourier_ntru_trace_key();
+    let fourier_ntru_ss_key = fourier_ntru_cmux_cbs_key.get_fourier_ntru_scheme_switch_key();
+
+    for (acc_idx, mut ntru_ciphertext_list) in output
+        .as_mut_ntru_ciphertext_list()
+        .chunks_mut(lut_count)
+        .enumerate()
+    {
+        let (accumulator_plaintext_list, stack1) = stack.make_raw::<OutputScalar>(polynomial_size.0);
+        let (accumulator_ntru_ciphertext, stack2) = stack1.make_raw::<OutputScalar>(polynomial_size.0);
+
+        let mut accumulator = PlaintextList::from_container(accumulator_plaintext_list.as_mut());
+        for (i, elt) in accumulator.as_mut().iter_mut().enumerate() {
+            let k = i % lut_count;
+            let level = if decomp_level_count.0 > acc_idx * lut_count + k {
+                decomp_level_count.0 - (acc_idx * lut_count + k)
+            } else {
+                1
+            };
+            let log_scale = log_ciphertext_modulus - level * decomp_base_log.0;
+            *elt = (OutputScalar::ONE).wrapping_neg() << (log_scale - 1); // - (q / 2 B^k)
+        }
+
+        for a_i in accumulator.as_mut()[0..half_box_size].iter_mut() {
+            *a_i = (*a_i).wrapping_neg();
+        }
+        accumulator.as_mut().rotate_left(half_box_size);
+
+        let mut accumulator_ntru_ciphertext = NtruCiphertext::from_container(accumulator_ntru_ciphertext, polynomial_size, ciphertext_modulus);
+        switch_to_ntru_ciphertext(
+            &fourier_ntru_cmux_bsk.get_fourier_ntru_switching_key(),
+            &accumulator,
+            &mut accumulator_ntru_ciphertext,
+        );
+
+        let log_br_modulus = polynomial_size.to_blind_rotation_input_modulus_log();
+
+        let msed = lwe_ciphertext_modulus_switch_lut_many(input.as_view(), log_br_modulus, log_lut_count);
+
+        ntru_cmux_blind_rotate_assign(
+            fourier_ntru_cmux_bsk.as_view(),
+            accumulator_ntru_ciphertext.as_mut_view(),
+            &msed,
+            fft,
+            stack2,
+        );
+
+        let mut buffer = NtruCiphertext::from_container(accumulator_plaintext_list, polynomial_size, ciphertext_modulus);
+
+        for (k, mut ntru_ciphertext) in ntru_ciphertext_list.iter_mut().enumerate() {
+            ntru_ciphertext.as_mut().clone_from_slice(accumulator_ntru_ciphertext.as_ref());
+            polynomial_wrapping_monic_monomial_div_assign(
+                &mut ntru_ciphertext.as_mut_polynomial(),
+                MonomialDegree(k),
+            );
+
+            /* For tracking error before scheme switch
+            rev_trace_ntru_ciphertext_assign(
+                &fourier_ntru_trace_key,
+                &mut ntru_ciphertext,
+            );
+            // */
+
+            // /*
+            rev_trace_ntru_ciphertext(
+                &fourier_ntru_trace_key,
+                &ntru_ciphertext,
+                &mut buffer,
+            );
+
+            scheme_switch_ntru_ciphertext(
+                &fourier_ntru_ss_key,
+                &buffer,
+                &mut ntru_ciphertext,
+            );
+
+            let level = decomp_level_count.0 - (acc_idx * lut_count + k);
+            let log_scale = OutputScalar::BITS - level * decomp_base_log.0;
+            let factor = OutputScalar::ONE << (log_scale - 1);
+            ntru_ciphertext.as_mut()[0] = ntru_ciphertext.as_ref()[0].wrapping_add(factor);
+            // */
+        }
+    }
+}

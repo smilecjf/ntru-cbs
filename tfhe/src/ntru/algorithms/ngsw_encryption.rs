@@ -204,6 +204,7 @@ where
     KeyCont: Container<Element = Scalar>,
     InputCont: Container<Element = Scalar>,
 {
+    // TODO: need to fix for Gaussian ntru_secret_key
     assert!(
         ngsw_ciphertext.polynomial_size() == ntru_secret_key.polynomial_size(),
         "Mismatch between polynomial sizes of input ciphertext and input secret key. \
