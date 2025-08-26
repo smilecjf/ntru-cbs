@@ -265,92 +265,47 @@ path = "tests/ntru/polynomial_inverse_native_mod.rs"
 harness = false
 
 [[test]]
-name = "ntru_secret_keygen_mod_power_of_two"
+name = "ntru_secret_keygen"
 path = "tests/ntru/ntru_secret_keygen_mod_power_of_two.rs"
 harness = false
 
 [[test]]
-name = "ntru_secret_keygen_native_mod"
-path = "tests/ntru/ntru_secret_keygen_native_mod.rs"
-harness = false
-
-[[test]]
-name = "ntru_encryption_mod_power_of_two"
+name = "ntru_encryption"
 path = "tests/ntru/ntru_encryption_mod_power_of_two.rs"
 harness = false
 
 [[test]]
-name = "ntru_encryption_native_mod"
-path = "tests/ntru/ntru_encryption_native_mod.rs"
-harness = false
-
-[[test]]
-name = "ntru_sample_extraction_native_mod"
-path = "tests/ntru/ntru_sample_extraction_native_mod.rs"
-harness = false
-
-[[test]]
-name = "ntru_sample_extraction_mod_power_of_two"
+name = "ntru_sample_extraction"
 path = "tests/ntru/ntru_sample_extraction_mod_power_of_two.rs"
 harness = false
 
 [[test]]
-name = "ngsw_encryption_mod_power_of_two"
+name = "ngsw_encryption"
 path = "tests/ntru/ngsw_encryption_mod_power_of_two.rs"
 harness = false
 
 [[test]]
-name = "ngsw_encryption_native_mod"
-path = "tests/ntru/ngsw_encryption_native_mod.rs"
-harness = false
-
-[[test]]
-name = "ngsw_external_product_native_mod"
-path = "tests/ntru/ngsw_external_product_native_mod.rs"
-harness = false
-
-[[test]]
-name = "ngsw_external_product_mod_power_of_two"
+name = "ngsw_external_product"
 path = "tests/ntru/ngsw_external_product_mod_power_of_two.rs"
 harness = false
 
 [[test]]
-name = "ntru_keyswitch_native_mod"
-path = "tests/ntru/ntru_keyswitch_native_mod.rs"
-harness = false
-
-[[test]]
-name = "ntru_keyswitch_mod_power_of_two"
+name = "ntru_keyswitch"
 path = "tests/ntru/ntru_keyswitch_mod_power_of_two.rs"
 harness = false
 
 [[test]]
-name = "ntru_automorphism_native_mod"
-path = "tests/ntru/ntru_automorphism_native_mod.rs"
-harness = false
-
-[[test]]
-name = "ntru_automorphism_mod_power_of_two"
+name = "ntru_automorphism"
 path = "tests/ntru/ntru_automorphism_mod_power_of_two.rs"
 harness = false
 
 [[test]]
-name = "ntru_switching_native_mod"
-path = "tests/ntru/ntru_switching_native_mod.rs"
-harness = false
-
-[[test]]
-name = "ntru_switching_mod_power_of_two"
+name = "ntru_switching"
 path = "tests/ntru/ntru_switching_mod_power_of_two.rs"
 harness = false
 
 [[test]]
-name = "ntru_rev_trace_native_mod"
-path = "tests/ntru/ntru_rev_trace_native_mod.rs"
-harness = false
-
-[[test]]
-name = "ntru_rev_trace_mod_power_of_two"
+name = "ntru_rev_trace"
 path = "tests/ntru/ntru_rev_trace_mod_power_of_two.rs"
 harness = false
 
@@ -359,37 +314,32 @@ name = "automorphism_group"
 path = "tests/ntru/automorphism_group.rs"
 
 [[test]]
-name = "ntru_cmux_bootstrap_native_mod"
-path = "tests/ntru/ntru_cmux_bootstrap_native_mod.rs"
-harness = false
-
-[[test]]
-name = "ntru_cmux_bootstrap_mod_power_of_two"
+name = "ntru_cmux_bootstrap"
 path = "tests/ntru/ntru_cmux_bootstrap_mod_power_of_two.rs"
 harness = false
 
 [[test]]
-name = "ntru_cmux_bootstrap_lut_many_mod_power_of_two"
+name = "ntru_cmux_bootstrap_lut_many"
 path = "tests/ntru/ntru_cmux_bootstrap_lut_many_mod_power_of_two.rs"
 harness = false
 
 [[test]]
-name = "ntru_scheme_switch_mod_power_of_two"
+name = "ntru_scheme_switch"
 path = "tests/ntru/ntru_scheme_switch_mod_power_of_two.rs"
 harness = false
 
 [[test]]
-name = "ntru_cmux_circuit_bootstrap_mod_power_of_two"
+name = "ntru_cmux_circuit_bootstrap"
 path  ="tests/ntru/ntru_cmux_circuit_bootstrap_mod_power_of_two.rs"
 harness = false
 
 [[test]]
-name = "ntru_to_rlwe_keyswitch_mod_power_of_two"
+name = "ntru_to_rlwe_keyswitch"
 path = "tests/ntru/ntru_to_rlwe_keyswitch_mod_power_of_two.rs"
 harness = false
 
 [[test]]
-name = "rlwe_scheme_switch_mod_power_of_two"
+name = "rlwe_scheme_switch"
 path = "tests/ntru/rlwe_scheme_switch_mod_power_of_two.rs"
 harness = false
 
