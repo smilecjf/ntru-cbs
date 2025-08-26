@@ -87,7 +87,6 @@ pub fn generate_ntru_to_rlwe_keyswitch_key<
 
         encrypt_glwe_ciphertext(
             output_rlwe_sk,
-            // &mut ntru_to_rlwe_keyswitch_key.as_mut_glwe_ciphertext_list(),
             &mut glwe,
             &decomp_plaintexts_buffer,
             noise_distribution,
