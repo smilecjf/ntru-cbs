@@ -180,5 +180,6 @@ pub fn scheme_switch_rlwe_ciphertext_mem_optimized<Scalar, SSKeyCont, InputCont,
     let mut output_rlwe_mask_poly = output_rlwe_mask_poly.get_mut(0);
 
     slice_wrapping_sub_assign(output_rlwe_mask_poly.as_mut(), input_rlwe_body_poly.as_ref());
+    slice_wrapping_opposite_assign(output_rlwe_ciphertext.as_mut());
 }
 

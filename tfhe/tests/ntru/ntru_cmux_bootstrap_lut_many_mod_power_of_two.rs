@@ -75,7 +75,7 @@ pub fn test_ntru_cmux_boot_lut_many(
 
     let log_message_modulus = 2usize;
     let message_modulus = 1usize << log_message_modulus;
-    let delta = Scalar::ONE << (log_output_modulus - 1 - log_message_modulus);
+    // let delta = Scalar::ONE << (log_output_modulus - 1 - log_message_modulus);
     let small_delta = SmallScalar::ONE << (log_input_modulus - 1 - log_message_modulus);
 
     let lut_count = 1 << log_lut_count.0;
@@ -93,7 +93,8 @@ pub fn test_ntru_cmux_boot_lut_many(
             let index = x * box_size;
             for (i, elem) in acc.as_mut()[index..index + box_size].iter_mut().enumerate() {
                 let k = i % lut_count;
-                let scale = delta >> k;
+                // let scale = delta >> k;
+                let scale = Scalar::ONE << (log_output_modulus - (k + 1) * 4);
                 *elem = Scalar::cast_from((x + k) % message_modulus).wrapping_mul(scale);
             }
         }
@@ -135,7 +136,8 @@ pub fn test_ntru_cmux_boot_lut_many(
 
         println!("[Test {idx}] input: {input_message}, time: {} ms", (time.as_micros() as f64) / 1000_f64);
         for (i, lwe_out) in lwe_out_list.iter().enumerate() {
-            let scale = delta >> i;
+            // let scale = delta >> i;
+            let scale  = Scalar::ONE << (log_output_modulus - (i + 1) * 4);
             let scaled_decrypted = decrypt_lwe_ciphertext(
                 &large_lwe_secret_key,
                 &lwe_out
@@ -167,11 +169,11 @@ pub fn main() {
 
     let param_list = [
         (NTRU_CMUX_STD128B2_PRIME, log_lut_count, FftType::Vanilla),
-        (NTRU_CMUX_STD128B2_PRIME, log_lut_count, FftType::Split(20)),
-        (NTRU_CMUX_STD128B2, log_lut_count, FftType::Vanilla),
-        (NTRU_CMUX_STD128B2, log_lut_count, FftType::Split(25)),
-        (NTRU_CMUX_STD128B3, log_lut_count, FftType::Vanilla),
-        (NTRU_CMUX_STD128B3, log_lut_count, FftType::Split(25)),
+        // (NTRU_CMUX_STD128B2_PRIME, log_lut_count, FftType::Split(20)),
+        // (NTRU_CMUX_STD128B2, log_lut_count, FftType::Vanilla),
+        // (NTRU_CMUX_STD128B2, log_lut_count, FftType::Split(25)),
+        // (NTRU_CMUX_STD128B3, log_lut_count, FftType::Vanilla),
+        // (NTRU_CMUX_STD128B3, log_lut_count, FftType::Split(25)),
     ];
     for (param, log_lut_count, fft_type) in param_list {
         param.print_info();

@@ -9,7 +9,8 @@ use tfhe_fft::c64;
 pub struct FourierNtruCMuxCircuitBootstrapKey<C: Container<Element = c64>> {
     fourier_ntru_cmux_bsk: FourierNtruCMuxBootstrapKey<C>,
     fourier_ntru_trace_key: FourierNtruTraceKey<C>,
-    fourier_ntru_ss_key: FourierNtruSchemeSwitchKey<C>,
+    fourier_ntru_to_rlwe_ksk: FourierNtruToRlweKeyswitchKey<C>,
+    fourier_rlwe_ss_key: FourierRlweSchemeSwitchKey<C>,
 }
 
 pub type FourierNtruCMuxCircuitBootstrapKeyView<'a> = FourierNtruCMuxCircuitBootstrapKey<&'a [c64]>;
@@ -41,8 +42,12 @@ impl<C: Container<Element = c64>> FourierNtruCMuxCircuitBootstrapKey<C> {
         self.fourier_ntru_trace_key.fft_type()
     }
 
+    pub fn ksk_fft_type(&self) -> FftType {
+        self.fourier_ntru_to_rlwe_ksk.fft_type()
+    }
+
     pub fn ss_fft_type(&self) -> FftType {
-        self.fourier_ntru_ss_key.fft_type()
+        self.fourier_rlwe_ss_key.fft_type()
     }
 
     pub fn get_fourier_ntru_cmux_bootstrap_key(&self) -> FourierNtruCMuxBootstrapKeyView<'_> {
@@ -53,15 +58,20 @@ impl<C: Container<Element = c64>> FourierNtruCMuxCircuitBootstrapKey<C> {
         self.fourier_ntru_trace_key.as_view()
     }
 
-    pub fn get_fourier_ntru_scheme_switch_key(&self) -> FourierNtruSchemeSwitchKeyView<'_> {
-        self.fourier_ntru_ss_key.as_view()
+    pub fn get_fourier_ntru_to_rlwe_keyswitch_key(&self) -> FourierNtruToRlweKeyswitchKeyView<'_> {
+        self.fourier_ntru_to_rlwe_ksk.as_view()
+    }
+
+    pub fn get_fourier_rlwe_scheme_switch_key(&self) -> FourierRlweSchemeSwitchKeyView<'_> {
+        self.fourier_rlwe_ss_key.as_view()
     }
 
     pub fn as_view(&self) -> FourierNtruCMuxCircuitBootstrapKeyView<'_> {
         FourierNtruCMuxCircuitBootstrapKeyView::<'_> {
             fourier_ntru_cmux_bsk: self.fourier_ntru_cmux_bsk.as_view(),
             fourier_ntru_trace_key: self.fourier_ntru_trace_key.as_view(),
-            fourier_ntru_ss_key: self.fourier_ntru_ss_key.as_view(),
+            fourier_ntru_to_rlwe_ksk: self.fourier_ntru_to_rlwe_ksk.as_view(),
+            fourier_rlwe_ss_key: self.fourier_rlwe_ss_key.as_view(),
         }
     }
 }
@@ -75,15 +85,20 @@ impl<C: ContainerMut<Element = c64>> FourierNtruCMuxCircuitBootstrapKey<C> {
         self.fourier_ntru_trace_key.as_mut_view()
     }
 
-    pub fn get_mut_fourier_ntru_scheme_switch_key(&mut self) -> FourierNtruSchemeSwitchKeyMutView<'_> {
-        self.fourier_ntru_ss_key.as_mut_view()
+    pub fn get_mut_fourier_ntru_to_rlwe_keyswitch_key(&mut self) -> FourierNtruToRlweKeyswitchKeyMutView<'_> {
+        self.fourier_ntru_to_rlwe_ksk.as_mut_view()
+    }
+
+    pub fn get_mut_fourier_rlwe_scheme_switch_key(&mut self) -> FourierRlweSchemeSwitchKeyMutView<'_> {
+        self.fourier_rlwe_ss_key.as_mut_view()
     }
 
     pub fn as_mut_view(&mut self) -> FourierNtruCMuxCircuitBootstrapKeyMutView<'_> {
         FourierNtruCMuxCircuitBootstrapKeyMutView::<'_> {
             fourier_ntru_cmux_bsk: self.fourier_ntru_cmux_bsk.as_mut_view(),
             fourier_ntru_trace_key: self.fourier_ntru_trace_key.as_mut_view(),
-            fourier_ntru_ss_key: self.fourier_ntru_ss_key.as_mut_view(),
+            fourier_ntru_to_rlwe_ksk: self.fourier_ntru_to_rlwe_ksk.as_mut_view(),
+            fourier_rlwe_ss_key: self.fourier_rlwe_ss_key.as_mut_view(),
         }
     }
 }
@@ -101,6 +116,9 @@ impl FourierNtruCMuxCircuitBootstrapKeyOwned {
         tr_decomp_base_log: DecompositionBaseLog,
         tr_decomp_level_count: DecompositionLevelCount,
         tr_fft_type: FftType,
+        ksk_decomp_base_log: DecompositionBaseLog,
+        ksk_decomp_level_count: DecompositionLevelCount,
+        ksk_fft_type: FftType,
         ss_decomp_base_log: DecompositionBaseLog,
         ss_decomp_level_count: DecompositionLevelCount,
         ss_fft_type: FftType,
@@ -122,7 +140,13 @@ impl FourierNtruCMuxCircuitBootstrapKeyOwned {
                 tr_decomp_level_count,
                 tr_fft_type,
             ),
-            fourier_ntru_ss_key: FourierNtruSchemeSwitchKey::new(
+            fourier_ntru_to_rlwe_ksk: FourierNtruToRlweKeyswitchKey::new(
+                polynomial_size,
+                ksk_decomp_base_log,
+                ksk_decomp_level_count,
+                ksk_fft_type,
+            ),
+            fourier_rlwe_ss_key: FourierRlweSchemeSwitchKey::new(
                 polynomial_size,
                 ss_decomp_base_log,
                 ss_decomp_level_count,

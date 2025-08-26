@@ -116,6 +116,7 @@ pub fn test_rlwe_scheme_switch(
             &mut correct_val_list.as_mut(),
             torus_scaling.wrapping_mul(delta),
         );
+        slice_wrapping_opposite_assign(correct_val_list.as_mut());
 
         encrypt_glwe_ciphertext(
             &rlwe_secret_key,

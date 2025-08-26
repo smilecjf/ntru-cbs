@@ -82,11 +82,20 @@ pub fn convert_standard_ntru_cmux_circuit_bootstrap_key_to_fourier_mem_optimized
         stack,
     );
 
-    let ntru_ss_key = standard_ntru_cmux_cbs_key.get_ntru_scheme_switch_key();
-    let mut fourier_ntru_ss_key = fourier_ntru_cmux_cbs_key.get_mut_fourier_ntru_scheme_switch_key();
-    convert_standard_ntru_scheme_switch_key_to_fourier_mem_optimized(
-        &ntru_ss_key,
-        &mut fourier_ntru_ss_key,
+    let ntru_to_rlwe_ksk = standard_ntru_cmux_cbs_key.get_ntru_to_rlwe_keyswitch_key();
+    let mut fourier_ntru_to_rlwe_ksk = fourier_ntru_cmux_cbs_key.get_mut_fourier_ntru_to_rlwe_keyswitch_key();
+    convert_standard_ntru_to_rlwe_keyswitch_key_to_fourier_mem_optimized(
+        &ntru_to_rlwe_ksk,
+        &mut fourier_ntru_to_rlwe_ksk,
+        fft,
+        stack,
+    );
+
+    let rlwe_ss_key = standard_ntru_cmux_cbs_key.get_rlwe_scheme_switch_key();
+    let mut fourier_rlwe_ss_key = fourier_ntru_cmux_cbs_key.get_mut_fourier_rlwe_scheme_switch_key();
+    convert_standard_rlwe_scheme_switch_key_to_fourier_mem_optimized(
+        &rlwe_ss_key,
+        &mut fourier_rlwe_ss_key,
         fft,
         stack,
     );
@@ -100,7 +109,7 @@ pub fn ntru_cmux_circuit_bootstrap_lwe_ciphertext<
     KeyCont: Container<Element = c64>,
 >(
     input: &LweCiphertext<InputCont>,
-    output: &mut NgswCiphertext<OutputCont>,
+    output: &mut GgswCiphertext<OutputCont>,
     fourier_ntru_cmux_cbs_key: &FourierNtruCMuxCircuitBootstrapKey<KeyCont>,
     log_lut_count: LutCountLog,
 ) {
@@ -136,7 +145,7 @@ pub fn ntru_cmux_circuit_bootstrap_lwe_ciphertext_scratch<Scalar>(
     fft: FftView<'_>,
 ) -> Result<StackReq, SizeOverflow> {
     StackReq::try_all_of([
-        StackReq::try_new::<Scalar>(polynomial_size.0)?,
+        StackReq::try_new::<Scalar>(2 * polynomial_size.0)?,
         StackReq::try_new::<Scalar>(polynomial_size.0)?,
         StackReq::try_any_of([
             ntru_cmux_blind_rotate_assign_scratch::<Scalar>(polynomial_size, fft)?,
@@ -154,7 +163,7 @@ pub fn ntru_cmux_circuit_bootstrap_lwe_ciphertext_mem_optimized<
     KeyCont: Container<Element = c64>,
 >(
     input: &LweCiphertext<InputCont>,
-    output: &mut NgswCiphertext<OutputCont>,
+    output: &mut GgswCiphertext<OutputCont>,
     fourier_ntru_cmux_cbs_key: &FourierNtruCMuxCircuitBootstrapKey<KeyCont>,
     log_lut_count: LutCountLog,
     fft: FftView<'_>,
@@ -181,12 +190,13 @@ pub fn ntru_cmux_circuit_bootstrap_lwe_ciphertext_mem_optimized<
 
     let fourier_ntru_cmux_bsk = fourier_ntru_cmux_cbs_key.get_fourier_ntru_cmux_bootstrap_key();
     let fourier_ntru_trace_key = fourier_ntru_cmux_cbs_key.get_fourier_ntru_trace_key();
-    let fourier_ntru_ss_key = fourier_ntru_cmux_cbs_key.get_fourier_ntru_scheme_switch_key();
+    let fourier_ntru_to_rlwe_ksk = fourier_ntru_cmux_cbs_key.get_fourier_ntru_to_rlwe_keyswitch_key();
+    let fourier_rlwe_ss_key = fourier_ntru_cmux_cbs_key.get_fourier_rlwe_scheme_switch_key();
 
-    for (acc_idx, mut ntru_ciphertext_list) in output
-        .as_mut_ntru_ciphertext_list()
-        .chunks_mut(lut_count)
-        .enumerate()
+    // TODO: add it to stack memory
+    let mut ntru_buffer = NtruCiphertextList::new(OutputScalar::ZERO, polynomial_size, NtruCiphertextCount(decomp_level_count.0), ciphertext_modulus);
+
+    for (acc_idx, mut ntru_chunk) in ntru_buffer.chunks_mut(lut_count).enumerate()
     {
         let (accumulator_plaintext_list, stack1) = stack.make_raw::<OutputScalar>(polynomial_size.0);
         let (accumulator_ntru_ciphertext, stack2) = stack1.make_raw::<OutputScalar>(polynomial_size.0);
@@ -227,40 +237,43 @@ pub fn ntru_cmux_circuit_bootstrap_lwe_ciphertext_mem_optimized<
             stack2,
         );
 
-        let mut buffer = NtruCiphertext::from_container(accumulator_plaintext_list, polynomial_size, ciphertext_modulus);
-
-        for (k, mut ntru_ciphertext) in ntru_ciphertext_list.iter_mut().enumerate() {
+        for (k, mut ntru_ciphertext) in ntru_chunk.iter_mut().enumerate() {
             ntru_ciphertext.as_mut().clone_from_slice(accumulator_ntru_ciphertext.as_ref());
             polynomial_wrapping_monic_monomial_div_assign(
                 &mut ntru_ciphertext.as_mut_polynomial(),
                 MonomialDegree(k),
             );
 
-            /* For tracking error before scheme switch
             rev_trace_ntru_ciphertext_assign(
                 &fourier_ntru_trace_key,
                 &mut ntru_ciphertext,
             );
-            // */
-
-            // /*
-            rev_trace_ntru_ciphertext(
-                &fourier_ntru_trace_key,
-                &ntru_ciphertext,
-                &mut buffer,
-            );
-
-            scheme_switch_ntru_ciphertext(
-                &fourier_ntru_ss_key,
-                &buffer,
-                &mut ntru_ciphertext,
-            );
-
-            let level = decomp_level_count.0 - (acc_idx * lut_count + k);
-            let log_scale = OutputScalar::BITS - level * decomp_base_log.0;
-            let factor = OutputScalar::ONE << (log_scale - 1);
-            ntru_ciphertext.as_mut()[0] = ntru_ciphertext.as_ref()[0].wrapping_add(factor);
-            // */
         }
+    }
+
+    // TODO: add it to stack memory
+    for (i, (ntru, mut rgsw_level_mat)) in ntru_buffer.iter().zip(output.iter_mut()).enumerate() {
+        let log_scale = OutputScalar::BITS - decomp_base_log.0 * (decomp_level_count.0 - i);
+
+        let mut rlwe_list = rgsw_level_mat.as_mut_glwe_list();
+        let (mut rlwe0, mut rlwe1) = rlwe_list.split_at_mut(1);
+        let mut rlwe0 = rlwe0.get_mut(0);
+        let mut rlwe1 = rlwe1.get_mut(0);
+
+        keyswitch_ntru_to_rlwe(
+            &fourier_ntru_to_rlwe_ksk,
+            &ntru,
+            &mut rlwe1,
+        );
+
+        let mut rlwe1_body = rlwe1.get_mut_body();
+        let mut rlwe1_body = rlwe1_body.as_mut_polynomial();
+        rlwe1_body.as_mut()[0] = rlwe1_body.as_ref()[0].wrapping_add(OutputScalar::ONE << (log_scale - 1));
+
+        scheme_switch_rlwe_ciphertext(
+            &fourier_rlwe_ss_key,
+            &rlwe1,
+            &mut rlwe0,
+        );
     }
 }

@@ -20,9 +20,11 @@ pub fn generate_ntru_cmux_circuit_bootstrap_key<
     Gen: ByteRandomGenerator,
 >(
     input_lwe_secret_key: &LweSecretKey<InputKeyCont>,
-    output_ntru_secret_key: &NtruSecretKey<OutputKeyCont>,
+    ntru_secret_key: &NtruSecretKey<OutputKeyCont>,
+    output_rlwe_secret_key: &GlweSecretKey<OutputKeyCont>,
     output: &mut NtruCMuxCircuitBootstrapKey<OutputCont>,
-    noise_distribution: NoiseDistribution,
+    ntru_noise_distribution: NoiseDistribution,
+    rlwe_noise_distribution: NoiseDistribution,
     generator: &mut EncryptionRandomGenerator<Gen>,
 ) {
     assert!(
@@ -34,32 +36,54 @@ pub fn generate_ntru_cmux_circuit_bootstrap_key<
     );
 
     assert!(
-        output.polynomial_size() == output_ntru_secret_key.polynomial_size(),
-        "Mismatched PolynomialSize between output NTRU secret key and LWE bootstrap key. \
-        Output NTRU secret key PolynomialSize: {:?}, LWE bootstrap key PolynomialSize {:?}.",
-        output_ntru_secret_key.polynomial_size(),
+        output.polynomial_size() == output_rlwe_secret_key.polynomial_size(),
+        "Mismatched PolynomialSize between output RLWE secret key and LWE bootstrap key. \
+        Output RLWE secret key PolynomialSize: {:?}, LWE bootstrap key PolynomialSize {:?}.",
+        output_rlwe_secret_key.polynomial_size(),
         output.polynomial_size()
     );
 
+    assert!(
+        ntru_secret_key.polynomial_size() == output_rlwe_secret_key.polynomial_size(),
+        "Mismatched PolynomialSize between NTRU secret key and output RLWE secret key. \
+        NTRU secret key PolynomialSize: {:?}, Output RLWE secret key PolynomialSize: {:?}.",
+        ntru_secret_key.polynomial_size(),
+        output_rlwe_secret_key.polynomial_size(),
+    );
+
+    assert!(
+        output_rlwe_secret_key.glwe_dimension() == GlweDimension(1),
+        "Only support RLWE output",
+    );
+
+
     generate_ntru_cmux_bootstrap_key(
         input_lwe_secret_key,
-        output_ntru_secret_key,
+        ntru_secret_key,
         &mut output.get_mut_ntru_cmux_bootstrap_key(),
-        noise_distribution,
+        ntru_noise_distribution,
         generator,
     );
 
     generate_ntru_trace_key(
-        output_ntru_secret_key,
+        ntru_secret_key,
         &mut output.get_mut_ntru_trace_key(),
-        noise_distribution,
+        ntru_noise_distribution,
         generator,
     );
 
-    generate_ntru_scheme_switch_key(
-        output_ntru_secret_key,
-        &mut output.get_mut_ntru_scheme_switch_key(),
-        noise_distribution,
+    generate_ntru_to_rlwe_keyswitch_key(
+        ntru_secret_key,
+        output_rlwe_secret_key,
+        &mut output.get_mut_ntru_to_rlwe_keyswitch_key(),
+        rlwe_noise_distribution,
+        generator,
+    );
+
+    generate_rlwe_scheme_switch_key(
+        output_rlwe_secret_key,
+        &mut output.get_mut_rlwe_scheme_switch_key(),
+        rlwe_noise_distribution,
         generator,
     );
 }
@@ -73,22 +97,26 @@ pub fn allocate_and_generate_new_ntru_cmux_circuit_bootstrap_key<
     Gen: ByteRandomGenerator,
 >(
     input_lwe_secret_key: &LweSecretKey<InputKeyCont>,
-    output_ntru_secret_key: &NtruSecretKey<OutputKeyCont>,
+    ntru_secret_key: &NtruSecretKey<OutputKeyCont>,
+    output_rlwe_secret_key: &GlweSecretKey<OutputKeyCont>,
     br_decomp_base_log: DecompositionBaseLog,
     br_decomp_level_count: DecompositionLevelCount,
     swk_decomp_base_log: DecompositionBaseLog,
     swk_decomp_level_count: DecompositionLevelCount,
     tr_decomp_base_log: DecompositionBaseLog,
     tr_decomp_level_count: DecompositionLevelCount,
+    ksk_decomp_base_log: DecompositionBaseLog,
+    ksk_decomp_level_count: DecompositionLevelCount,
     ss_decomp_base_log: DecompositionBaseLog,
     ss_decomp_level_count: DecompositionLevelCount,
-    noise_distribution: NoiseDistribution,
+    ntru_noise_distribution: NoiseDistribution,
+    rlwe_noise_distribution: NoiseDistribution,
     ciphertext_modulus: CiphertextModulus<OutputScalar>,
     generator: &mut EncryptionRandomGenerator<Gen>,
 ) -> NtruCMuxCircuitBootstrapKeyOwned<OutputScalar> {
     let mut cbs_key = NtruCMuxCircuitBootstrapKey::new(
         OutputScalar::ZERO,
-        output_ntru_secret_key.polynomial_size(),
+        ntru_secret_key.polynomial_size(),
         input_lwe_secret_key.lwe_dimension(),
         br_decomp_base_log,
         br_decomp_level_count,
@@ -96,6 +124,8 @@ pub fn allocate_and_generate_new_ntru_cmux_circuit_bootstrap_key<
         swk_decomp_level_count,
         tr_decomp_base_log,
         tr_decomp_level_count,
+        ksk_decomp_base_log,
+        ksk_decomp_level_count,
         ss_decomp_base_log,
         ss_decomp_level_count,
         ciphertext_modulus,
@@ -103,9 +133,11 @@ pub fn allocate_and_generate_new_ntru_cmux_circuit_bootstrap_key<
 
     generate_ntru_cmux_circuit_bootstrap_key(
         input_lwe_secret_key,
-        output_ntru_secret_key,
+        ntru_secret_key,
+        output_rlwe_secret_key,
         &mut cbs_key,
-        noise_distribution,
+        ntru_noise_distribution,
+        rlwe_noise_distribution,
         generator,
     );
 

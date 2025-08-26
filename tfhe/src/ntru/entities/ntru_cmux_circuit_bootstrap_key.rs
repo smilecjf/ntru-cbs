@@ -11,7 +11,8 @@ where
 {
     ntru_cmux_bsk: NtruCMuxBootstrapKey<C>,
     ntru_trace_key: NtruTraceKey<C>,
-    ntru_ss_key: NtruSchemeSwitchKey<C>,
+    ntru_to_rlwe_ksk: NtruToRlweKeyswitchKey<C>,
+    rlwe_ss_key: RlweSchemeSwitchKey<C>,
     ciphertext_modulus: CiphertextModulus<C::Element>,
 }
 
@@ -44,15 +45,20 @@ impl<Scalar: UnsignedInteger, C: Container<Element = Scalar>> NtruCMuxCircuitBoo
         self.ntru_trace_key.as_view()
     }
 
-    pub fn get_ntru_scheme_switch_key(&self) -> NtruSchemeSwitchKeyView<'_, Scalar> {
-        self.ntru_ss_key.as_view()
+    pub fn get_ntru_to_rlwe_keyswitch_key(&self) -> NtruToRlweKeyswitchKeyView<'_, Scalar> {
+        self.ntru_to_rlwe_ksk.as_view()
+    }
+
+    pub fn get_rlwe_scheme_switch_key(&self) -> RlweSchemeSwitchKeyView<'_, Scalar> {
+        self.rlwe_ss_key.as_view()
     }
 
     pub fn as_view(&self) -> NtruCMuxCircuitBootstrapKeyView<'_, Scalar> {
         NtruCMuxCircuitBootstrapKeyView::<'_, Scalar> {
             ntru_cmux_bsk: self.ntru_cmux_bsk.as_view(),
             ntru_trace_key: self.ntru_trace_key.as_view(),
-            ntru_ss_key: self.ntru_ss_key.as_view(),
+            ntru_to_rlwe_ksk: self.ntru_to_rlwe_ksk.as_view(),
+            rlwe_ss_key: self.rlwe_ss_key.as_view(),
             ciphertext_modulus: self.ciphertext_modulus,
         }
     }
@@ -67,15 +73,20 @@ impl<Scalar: UnsignedInteger, C: ContainerMut<Element = Scalar>> NtruCMuxCircuit
         self.ntru_trace_key.as_mut_view()
     }
 
-    pub fn get_mut_ntru_scheme_switch_key(&mut self) -> NtruSchemeSwitchKeyMutView<'_, Scalar> {
-        self.ntru_ss_key.as_mut_view()
+    pub fn get_mut_ntru_to_rlwe_keyswitch_key(&mut self) -> NtruToRlweKeyswitchKeyMutView<'_, Scalar> {
+        self.ntru_to_rlwe_ksk.as_mut_view()
+    }
+
+    pub fn get_mut_rlwe_scheme_switch_key(&mut self) -> RlweSchemeSwitchKeyMutView<'_, Scalar> {
+        self.rlwe_ss_key.as_mut_view()
     }
 
     pub fn as_mut_view(&mut self) -> NtruCMuxCircuitBootstrapKeyMutView<'_, Scalar> {
         NtruCMuxCircuitBootstrapKeyMutView::<'_, Scalar> {
             ntru_cmux_bsk: self.ntru_cmux_bsk.as_mut_view(),
             ntru_trace_key: self.ntru_trace_key.as_mut_view(),
-            ntru_ss_key: self.ntru_ss_key.as_mut_view(),
+            ntru_to_rlwe_ksk: self.ntru_to_rlwe_ksk.as_mut_view(),
+            rlwe_ss_key: self.rlwe_ss_key.as_mut_view(),
             ciphertext_modulus: self.ciphertext_modulus,
         }
     }
@@ -92,6 +103,8 @@ impl<Scalar: UnsignedInteger> NtruCMuxCircuitBootstrapKeyOwned<Scalar> {
         swk_decomp_level_count: DecompositionLevelCount,
         tr_decomp_base_log: DecompositionBaseLog,
         tr_decomp_level_count: DecompositionLevelCount,
+        ksk_decomp_base_log: DecompositionBaseLog,
+        ksk_decomp_level_count: DecompositionLevelCount,
         ss_decomp_base_log: DecompositionBaseLog,
         ss_decomp_level_count: DecompositionLevelCount,
         ciphertext_modulus: CiphertextModulus<Scalar>,
@@ -113,7 +126,14 @@ impl<Scalar: UnsignedInteger> NtruCMuxCircuitBootstrapKeyOwned<Scalar> {
                 tr_decomp_level_count,
                 ciphertext_modulus,
             ),
-            ntru_ss_key: NtruSchemeSwitchKey::new(
+            ntru_to_rlwe_ksk: NtruToRlweKeyswitchKey::new(
+                fill_with,
+                polynomial_size,
+                ksk_decomp_base_log,
+                ksk_decomp_level_count,
+                ciphertext_modulus,
+            ),
+            rlwe_ss_key: RlweSchemeSwitchKey::new(
                 fill_with,
                 polynomial_size,
                 ss_decomp_base_log,
