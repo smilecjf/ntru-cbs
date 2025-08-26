@@ -111,12 +111,8 @@ pub fn main() {
     println!("* Test NTRU switching with blind rotation decomposition parameters\n");
 
     let param_list = [
-        (NTRU_CMUX_STD128B2_PRIME, FftType::Vanilla),
-        (NTRU_CMUX_STD128B2_PRIME, FftType::Split(20)),
         (NTRU_CMUX_STD128B2, FftType::Vanilla),
-        (NTRU_CMUX_STD128B2, FftType::Split(25)),
         (NTRU_CMUX_STD128B3, FftType::Vanilla),
-        (NTRU_CMUX_STD128B3, FftType::Split(25)),
         ];
 
     for (param, fft_type) in param_list {

@@ -168,12 +168,8 @@ pub fn main() {
     let log_lut_count = LutCountLog(2);
 
     let param_list = [
-        (NTRU_CMUX_STD128B2_PRIME, log_lut_count, FftType::Vanilla),
-        // (NTRU_CMUX_STD128B2_PRIME, log_lut_count, FftType::Split(20)),
-        // (NTRU_CMUX_STD128B2, log_lut_count, FftType::Vanilla),
-        // (NTRU_CMUX_STD128B2, log_lut_count, FftType::Split(25)),
-        // (NTRU_CMUX_STD128B3, log_lut_count, FftType::Vanilla),
-        // (NTRU_CMUX_STD128B3, log_lut_count, FftType::Split(25)),
+        (NTRU_CMUX_STD128B2, log_lut_count, FftType::Vanilla),
+        (NTRU_CMUX_STD128B3, log_lut_count, FftType::Vanilla),
     ];
     for (param, log_lut_count, fft_type) in param_list {
         param.print_info();
