@@ -14,31 +14,34 @@ fn criterion_benchmark_ntru_rev_trace(c: &mut Criterion) {
     let mut group = c.benchmark_group("NTRU RevHomTrace");
 
     type Scalar = u64;
-    let polynomial_size = PolynomialSize(2048);
 
     let param_list = [
-        ("STD128B2'", DecompositionBaseLog(8), DecompositionLevelCount(4), 39),
-        ("STD128B2", DecompositionBaseLog(9), DecompositionLevelCount(4), 45),
-        ("STD128B3", DecompositionBaseLog(9), DecompositionLevelCount(4), 45),
+        NTRU_CMUX_STD128B2,
+        NTRU_CMUX_STD128B3,
     ];
 
     for param in param_list.iter() {
-        let name = param.0;
-        let tr_decomp_base_log = param.1;
-        let tr_decomp_level_count = param.2;
-        let power = param.3;
+        let name = param.name();
+        let polynomial_size = param.polynomial_size();
+        let tr_decomp_base_log = param.tr_decomp_base_log();
+        let tr_decomp_level_count = param.tr_decomp_level_count();
+        let log_modulus = param.log_output_modulus().0;
 
-        let ciphertext_modulus = CiphertextModulus::<Scalar>::try_new_power_of_2(power).unwrap();
+        let ciphertext_modulus = CiphertextModulus::<Scalar>::try_new_power_of_2(log_modulus).unwrap();
 
         let mut seeder = new_seeder();
         let seeder = seeder.as_mut();
-        let mut secret_generator = SecretRandomGenerator::<DefaultRandomGenerator>::new(seeder.seed());
         let mut encryption_generator = EncryptionRandomGenerator::<DefaultRandomGenerator>::new(seeder.seed(), seeder);
 
         let ntru_noise_distribution =
             Gaussian::from_dispersion_parameter(StandardDev(5.38420863449573516845703125e-12), 0.0);
 
-        let ntru_secret_key = allocate_and_generate_new_binary_ntru_secret_key(polynomial_size, ciphertext_modulus, &mut secret_generator);
+        let ntru_secret_key = allocate_and_generate_new_gaussian_ntru_secret_key(
+            polynomial_size,
+            ciphertext_modulus,
+            ntru_noise_distribution,
+            &mut encryption_generator,
+        );
 
         let ntru_trace_key = allocate_and_generate_new_ntru_trace_key(
             &ntru_secret_key,

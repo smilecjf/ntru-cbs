@@ -394,11 +394,6 @@ path = "tests/ntru/rlwe_scheme_switch_mod_power_of_two.rs"
 harness = false
 
 [[bench]]
-name = "ntru_external_product"
-path = "benches/ntru/ntru_external_product.rs"
-harness = false
-
-[[bench]]
 name = "ntru_cmux_bootstrap"
 path = "benches/ntru/ntru_cmux_bootstrap.rs"
 harness = false
@@ -406,6 +401,11 @@ harness = false
 [[bench]]
 name = "ntru_rev_trace"
 path = "benches/ntru/ntru_rev_trace.rs"
+harness = false
+
+[[bench]]
+name = "ntru_cmux_circuit_bootstrap"
+path = "benches/ntru/ntru_cmux_circuit_bootstrap.rs"
 harness = false
 
 [lib]

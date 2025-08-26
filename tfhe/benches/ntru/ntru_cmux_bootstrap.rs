@@ -16,27 +16,25 @@ fn criterion_benchmark_ntru_cmux_bootstrap(c: &mut Criterion) {
     type Scalar = u64;
     type SmallScalar = u32;
 
-    let small_power = 12;
-    let small_ciphertext_modulus = CiphertextModulus::<SmallScalar>::try_new_power_of_2(small_power).unwrap();
-
-    let polynomial_size = PolynomialSize(2048);
-    let lwe_dimension = LweDimension(571);
+    let small_log_modulus = 12;
+    let small_ciphertext_modulus = CiphertextModulus::<SmallScalar>::try_new_power_of_2(small_log_modulus).unwrap();
 
     let param_list = [
-        ("STD128B2'", DecompositionBaseLog(12), DecompositionLevelCount(2), DecompositionBaseLog(12), DecompositionLevelCount(2), 39),
-        ("STD128B2", DecompositionBaseLog(13), DecompositionLevelCount(2), DecompositionBaseLog(12), DecompositionLevelCount(2), 45),
-        ("STD128B3", DecompositionBaseLog(10), DecompositionLevelCount(3), DecompositionBaseLog(10), DecompositionLevelCount(3), 45),
+        NTRU_CMUX_STD128B2,
+        NTRU_CMUX_STD128B3,
     ];
 
     for param in param_list.iter() {
-        let name = param.0;
-        let br_decomp_base_log = param.1;
-        let br_decomp_level_count = param.2;
-        let swk_decomp_base_log = param.3;
-        let swk_decomp_level_count= param.4;
-        let power = param.5;
+        let name = param.name();
+        let polynomial_size = param.polynomial_size();
+        let lwe_dimension = param.input_lwe_dimension();
+        let br_decomp_base_log = param.br_decomp_base_log();
+        let br_decomp_level_count = param.br_decomp_level_count();
+        let swk_decomp_base_log = param.br_decomp_base_log();
+        let swk_decomp_level_count = param.br_decomp_level_count();
+        let log_modulus = param.log_output_modulus().0;
 
-        let ciphertext_modulus = CiphertextModulus::<Scalar>::try_new_power_of_2(power).unwrap();
+        let ciphertext_modulus = CiphertextModulus::<Scalar>::try_new_power_of_2(log_modulus).unwrap();
 
         let mut seeder = new_seeder();
         let seeder = seeder.as_mut();
@@ -44,11 +42,11 @@ fn criterion_benchmark_ntru_cmux_bootstrap(c: &mut Criterion) {
         let mut encryption_generator = EncryptionRandomGenerator::<DefaultRandomGenerator>::new(seeder.seed(), seeder);
 
         let ntru_noise_distribution =
-            Gaussian::from_dispersion_parameter(StandardDev(5.38420863449573516845703125e-12), 0.0);
+            Gaussian::from_dispersion_parameter(StandardDev(param.torus_ntru_std_dev()), 0.0);
         let lwe_noise_distribution =
-            Gaussian::from_dispersion_parameter(StandardDev(0.00077880859375), 0.0);
+            Gaussian::from_dispersion_parameter(StandardDev(param.torus_lwe_std_dev()), 0.0);
 
-        let ntru_secret_key = allocate_and_generate_new_binary_ntru_secret_key(polynomial_size, ciphertext_modulus, &mut secret_generator);
+        let ntru_secret_key = allocate_and_generate_new_gaussian_ntru_secret_key(polynomial_size, ciphertext_modulus, ntru_noise_distribution, &mut encryption_generator);
 
         let lwe_secret_key: LweSecretKeyOwned<SmallScalar> = allocate_and_generate_new_binary_lwe_secret_key(
             lwe_dimension,
@@ -75,6 +73,7 @@ fn criterion_benchmark_ntru_cmux_bootstrap(c: &mut Criterion) {
             swk_decomp_base_log,
             swk_decomp_level_count,
             ntru_cmux_bsk.input_lwe_dimension(),
+            FftType::Vanilla,
             FftType::Vanilla,
         );
 
