@@ -383,6 +383,11 @@ name = "ntru_cmux_circuit_bootstrap_mod_power_of_two"
 path  ="tests/ntru/ntru_cmux_circuit_bootstrap_mod_power_of_two.rs"
 harness = false
 
+[[test]]
+name = "ntru_to_rlwe_keyswitch_mod_power_of_two"
+path = "tests/ntru/ntru_to_rlwe_keyswitch_mod_power_of_two.rs"
+harness = false
+
 [[bench]]
 name = "ntru_external_product"
 path = "benches/ntru/ntru_external_product.rs"
