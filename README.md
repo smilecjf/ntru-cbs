@@ -1,5 +1,7 @@
 # NTRU-based Circuit Bootstrapping
 This is an implementation of 'NTRU-based Circuit Bootstrapping' based on [TFHE-rs](https://github.com/zama-ai/tfhe-rs) library.
+The added NTRU implementation source codes are given in [tfhe/src/ntru](./tfhe/src/ntru/).
+Test and benchmarks are given in [tfhe/tests/ntru](./tfhe/tests/ntru/) and [tfhe/benches/ntru](./tfhe/benches/ntru/).
 
 ## Contents
 We implement:
