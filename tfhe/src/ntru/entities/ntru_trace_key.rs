@@ -20,7 +20,7 @@ pub type NtruTraceKeyMutView<'data, Scalar> = NtruTraceKey<&'data mut [Scalar]>;
 pub type NtruTraceKeyOwned<Scalar> = NtruTraceKey<Vec<Scalar>>;
 
 impl<Scalar: UnsignedInteger, C: Container<Element = Scalar>> NtruTraceKey<C> {
-    pub fn get_automorphism_key(&self, index: usize) -> NtruAutomorphismKeyView<Scalar> {
+    pub fn get_automorphism_key(&self, index: usize) -> NtruAutomorphismKeyView<'_, Scalar> {
         let automorphism_key_count = self.automorphism_key_count().0;
         assert!(
             index < automorphism_key_count,
@@ -72,7 +72,7 @@ impl<Scalar: UnsignedInteger, C: Container<Element = Scalar>> NtruTraceKey<C> {
 }
 
 impl<Scalar: UnsignedInteger, C: ContainerMut<Element = Scalar>> NtruTraceKey<C> {
-    pub fn get_mut_automorphism_key(&mut self, index: usize) -> NtruAutomorphismKeyMutView<Scalar> {
+    pub fn get_mut_automorphism_key(&mut self, index: usize) -> NtruAutomorphismKeyMutView<'_, Scalar> {
         let automorphism_key_count = self.automorphism_key_count().0;
         assert!(
             index < automorphism_key_count,

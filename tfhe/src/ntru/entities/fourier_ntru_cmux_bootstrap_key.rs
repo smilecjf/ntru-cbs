@@ -53,11 +53,11 @@ impl<C: Container<Element = c64>> FourierNtruCMuxBootstrapKey<C> {
 }
 
 impl<C: ContainerMut<Element = c64>> FourierNtruCMuxBootstrapKey<C> {
-    pub fn get_mut_fourier_ngsw_list(&mut self) -> FourierNgswCiphertextListMutView {
+    pub fn get_mut_fourier_ngsw_list(&mut self) -> FourierNgswCiphertextListMutView<'_> {
         self.fourier_ngsw_list.as_mut_view()
     }
 
-    pub fn get_mut_fourier_ntru_switching_key(&mut self) -> FourierNtruSwitchingKeyMutView {
+    pub fn get_mut_fourier_ntru_switching_key(&mut self) -> FourierNtruSwitchingKeyMutView<'_> {
         self.fourier_ntru_switching_key.as_mut_view()
     }
 

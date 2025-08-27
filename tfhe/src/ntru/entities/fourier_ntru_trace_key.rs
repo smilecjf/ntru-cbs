@@ -22,7 +22,7 @@ pub type FourierNtruTraceKeyMutView<'a> = FourierNtruTraceKey<&'a mut [c64]>;
 pub type FourierNtruTraceKeyOwned = FourierNtruTraceKey<ABox<[c64]>>;
 
 impl<C: Container<Element = c64>> FourierNtruTraceKey<C> {
-    pub fn get_automorphism_key(&self, index: usize) -> FourierNtruAutomorphismKeyView {
+    pub fn get_automorphism_key(&self, index: usize) -> FourierNtruAutomorphismKeyView<'_> {
         let automorphism_key_count = self.automorphism_key_count().0;
         assert!(
             index < automorphism_key_count,
@@ -74,7 +74,7 @@ impl<C: Container<Element = c64>> FourierNtruTraceKey<C> {
 }
 
 impl<C: ContainerMut<Element = c64>> FourierNtruTraceKey<C> {
-    pub fn get_mut_automorphism_key(&mut self, index: usize) -> FourierNtruAutomorphismKeyMutView {
+    pub fn get_mut_automorphism_key(&mut self, index: usize) -> FourierNtruAutomorphismKeyMutView<'_> {
         let automorphism_key_count = self.automorphism_key_count().0;
         assert!(
             index < automorphism_key_count,
