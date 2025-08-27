@@ -8,6 +8,8 @@ We implement:
 - tests for
   - NTRU-based bootstrapping: [ntru_cmux_bootstrap](tfhe/tests/ntru/ntru_cmux_bootstrap_mod_power_of_two.rs)
   - NTRU-based RevHomtrace: [ntru_rev_trace](tfhe/tests/ntru/ntru_rev_trace_mod_power_of_two.rs)
+  - NTRU-to-RLWE keyswitch: [ntru_to_rlwe_keyswitch](tfhe/tests/ntru/ntru_to_rlwe_keyswitch_mod_power_of_two.rs)
+  - RLWE scheme switch: [rlwe_scheme_switch](tfhe/tests/ntru/rlwe_scheme_switch_mod_power_of_two.rs)
   - NTRU-based circuit-bootstrapping: [ntru_cmux_circuit_bootstrap](tfhe/tests/ntru/ntru_cmux_circuit_bootstrap_mod_power_of_two.rs)
 - benchmarks for
   - NTRU-based bootstrapping: [ntru_cmux_bootstrap](tfhe/benches/ntru/ntru_cmux_bootstrap.rs)
