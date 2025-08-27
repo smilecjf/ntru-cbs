@@ -162,31 +162,12 @@ impl NtruCMuxParameters {
     }
 }
 
-pub const NTRU_CMUX_STD128B2_PRIME: NtruCMuxParameters = NtruCMuxParameters {
-    name: "STD128B2'",
-    polynomial_size: PolynomialSize(2048),
-    log_output_modulus: CiphertextModulusLog(39),
-    ntru_std_dev: 2.96,
-    rlwe_std_dev: 2.96,
-    input_lwe_dimension: LweDimension(571),
-    log_input_modulus: CiphertextModulusLog(12),
-    lwe_std_dev: 3.19,
-    br_decomp_base_log: DecompositionBaseLog(12),
-    br_decomp_level_count: DecompositionLevelCount(2),
-    tr_decomp_base_log: DecompositionBaseLog(9),
-    tr_decomp_level_count: DecompositionLevelCount(4),
-    ksk_decomp_base_log: DecompositionBaseLog(8),
-    ksk_decomp_level_count: DecompositionLevelCount(5),
-    ss_decomp_base_log: DecompositionBaseLog(8),
-    ss_decomp_level_count: DecompositionLevelCount(5),
-};
-
 pub const NTRU_CMUX_STD128B2: NtruCMuxParameters = NtruCMuxParameters {
     name: "STD128B2",
     polynomial_size: PolynomialSize(2048),
     log_output_modulus: CiphertextModulusLog(45),
     ntru_std_dev: 23.0,
-    rlwe_std_dev: 23.0,
+    rlwe_std_dev: 3.0,
     input_lwe_dimension: LweDimension(571),
     log_input_modulus: CiphertextModulusLog(12),
     lwe_std_dev: 3.19,
@@ -205,7 +186,7 @@ pub const NTRU_CMUX_STD128B3: NtruCMuxParameters = NtruCMuxParameters {
     polynomial_size: PolynomialSize(2048),
     log_output_modulus: CiphertextModulusLog(45),
     ntru_std_dev: 23.0,
-    rlwe_std_dev: 23.0,
+    rlwe_std_dev: 3.0,
     input_lwe_dimension: LweDimension(571),
     log_input_modulus: CiphertextModulusLog(12),
     lwe_std_dev: 3.19,

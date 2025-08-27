@@ -65,7 +65,7 @@ pub fn test_ntru_encryption(param: NtruCMuxParameters) {
 }
 
 pub fn main() {
-    let param_list = [NTRU_CMUX_STD128B2_PRIME, NTRU_CMUX_STD128B2, NTRU_CMUX_STD128B3];
+    let param_list = [NTRU_CMUX_STD128B2, NTRU_CMUX_STD128B3];
     for param in param_list {
         param.print_info();
         test_ntru_encryption(param);
