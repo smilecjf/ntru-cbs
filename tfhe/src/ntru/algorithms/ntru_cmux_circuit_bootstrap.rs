@@ -122,6 +122,7 @@ pub fn ntru_cmux_circuit_bootstrap_lwe_ciphertext<
     buffers.resize(
         ntru_cmux_circuit_bootstrap_lwe_ciphertext_scratch::<OutputScalar>(
             polynomial_size,
+            output.decomposition_level_count(),
             fft,
         )
         .unwrap()
@@ -142,9 +143,11 @@ pub fn ntru_cmux_circuit_bootstrap_lwe_ciphertext<
 
 pub fn ntru_cmux_circuit_bootstrap_lwe_ciphertext_scratch<Scalar>(
     polynomial_size: PolynomialSize,
+    decomp_level_count: DecompositionLevelCount,
     fft: FftView<'_>,
 ) -> Result<StackReq, SizeOverflow> {
     StackReq::try_all_of([
+        StackReq::try_new::<Scalar>(polynomial_size.0 * decomp_level_count.0)?,
         StackReq::try_new::<Scalar>(2 * polynomial_size.0)?,
         StackReq::try_new::<Scalar>(polynomial_size.0)?,
         StackReq::try_any_of([
@@ -194,7 +197,13 @@ pub fn ntru_cmux_circuit_bootstrap_lwe_ciphertext_mem_optimized<
     let fourier_rlwe_ss_key = fourier_ntru_cmux_cbs_key.get_fourier_rlwe_scheme_switch_key();
 
     // TODO: add it to stack memory
-    let mut ntru_buffer = NtruCiphertextList::new(OutputScalar::ZERO, polynomial_size, NtruCiphertextCount(decomp_level_count.0), ciphertext_modulus);
+    // let mut ntru_buffer = NtruCiphertextList::new(OutputScalar::ZERO, polynomial_size, NtruCiphertextCount(decomp_level_count.0), ciphertext_modulus);
+    let (ntru_buffer, stack) = stack.make_raw::<OutputScalar>(polynomial_size.0 * decomp_base_log.0);
+    let mut ntru_buffer = NtruCiphertextList::from_container(
+        ntru_buffer,
+        polynomial_size,
+        ciphertext_modulus,
+    );
 
     for (acc_idx, mut ntru_chunk) in ntru_buffer.chunks_mut(lut_count).enumerate()
     {
@@ -260,20 +269,24 @@ pub fn ntru_cmux_circuit_bootstrap_lwe_ciphertext_mem_optimized<
         let mut rlwe0 = rlwe0.get_mut(0);
         let mut rlwe1 = rlwe1.get_mut(0);
 
-        keyswitch_ntru_to_rlwe(
-            &fourier_ntru_to_rlwe_ksk,
-            &ntru,
+        keyswitch_ntru_to_rlwe_mem_optimized(
+            fourier_ntru_to_rlwe_ksk,
+            ntru,
             &mut rlwe1,
+            fft,
+            stack,
         );
 
         let mut rlwe1_body = rlwe1.get_mut_body();
         let mut rlwe1_body = rlwe1_body.as_mut_polynomial();
         rlwe1_body.as_mut()[0] = rlwe1_body.as_ref()[0].wrapping_add(OutputScalar::ONE << (log_scale - 1));
 
-        scheme_switch_rlwe_ciphertext(
+        scheme_switch_rlwe_ciphertext_mem_optimized(
             &fourier_rlwe_ss_key,
             &rlwe1,
             &mut rlwe0,
+            fft,
+            stack,
         );
     }
 }
